@@ -44,6 +44,23 @@ const formatDuration = (minutes: number) =>
 const formatElapsed = (minutes: number) =>
   `${Math.floor(minutes)}:${minutes % 1 === 0 ? '00' : '30'}`;
 
+const rubyToken = /(#.*$|'[^']*'|"[^"\n]*"|\b(?:def|end|class|module|if|else|elsif|unless|do|case|when|return)\b|\b(?:true|false|nil)\b|:\w+|\b\d+\b|\b[a-z_]\w*[!?]?(?=\())/gm;
+
+function RubyCode({ code }: { code: string }) {
+  return code.split(rubyToken).map((token, index) => {
+    if (!token) return null;
+    let color = 'text-[#42191f]';
+    if (token.startsWith('#')) color = 'text-[#9a7073] italic';
+    else if (/^['"]/.test(token)) color = 'text-[#a44a00]';
+    else if (/^(def|end|class|module|if|else|elsif|unless|do|case|when|return)$/.test(token)) color = 'text-[#9c1f31] font-semibold';
+    else if (/^(true|false|nil)$/.test(token)) color = 'text-[#6b3d7a] font-semibold';
+    else if (/^:\w+$/.test(token)) color = 'text-[#b04b5f]';
+    else if (/^\d+$/.test(token)) color = 'text-[#805246]';
+    else if (/^[a-z_]\w*[!?]?$/.test(token)) color = 'text-[#6b3d7a]';
+    return <span className={color} key={`${token}-${index}`}>{token}</span>;
+  });
+}
+
 export default function Home() {
   const [active, setActive] = useState(0);
   const [presenterMode, setPresenterMode] = useState(false);
@@ -110,7 +127,7 @@ export default function Home() {
                 </div>
                 <div className="border border-white/10 bg-black/20 p-5 sm:p-7">
                   <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-white/40"><Code2 className="size-4" /> Punto de fricción</div>
-                  <pre className="min-h-44 whitespace-pre-wrap font-mono text-[14px] leading-7 text-[#f6f3ec]">{current.code ?? current.annotation}</pre>
+                  <pre className="min-h-44 whitespace-pre-wrap font-mono text-[14px] leading-7"><RubyCode code={(current.code ?? current.annotation).replace(/^\+/gm, '')} /></pre>
                 </div>
               </div>
             ) : (
