@@ -1,0 +1,6 @@
+claim_id,claim,evidence_needed,status,source_or_method
+C01,"Mutation testing encuentra decisiones semánticas no distinguidas por una suite verde","Mutantes vivos reproducibles y clasificación revisada","pending","Piloto Real World Rails"
+C02,"Line coverage no implica cobertura semántica","Ejemplo mínimo y mutante vivo con líneas ejecutadas","draft","Ejemplo de la charla"
+C03,"El coste puede volver inviable mutar todo el repositorio","Baseline, duración de mutación y coste de revisión","pending","Piloto Real World Rails"
+C04,"Los mutantes son un proxy imperfecto de bugs reales","Estudios y clasificación de equivalentes/no realistas","researching","Just et al. 2014; Long Term Effects of Mutation Testing"
+C05,"Un LLM puede acelerar la revisión pero no reemplaza una decisión humana de dominio","Comparación de clasificación LLM vs revisión humana y evidencia","pending","Piloto Real World Rails"
