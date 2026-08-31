@@ -12,7 +12,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - La charla web y el material editorial están en `main`.
 - La línea de investigación vive en `research/real-world-rails-pilot`.
 - Se clonó el índice de Real World Rails en un checkout local separado; su `.gitmodules` enumera **214** checkouts. El índice no contiene los apps completos: son submódulos de repositorios externos.
-- Aún no se inventarió la adopción de gems ni se ejecutó Mutant en una aplicación. No reportar números de adopción, coste o bugs hasta completar las fases siguientes.
+- El inventario estático inicial quedó en la rama `research/real-world-rails-pilot` (commit `38ab095`). Registra 214 filas, pero todavía necesita revisión de calidad antes de presentar una tasa de adopción. Aún no se ejecutó Mutant en una aplicación; no reportar números de coste, mutantes o bugs hasta completar las fases siguientes.
 
 ## Material existente
 
@@ -78,7 +78,7 @@ En un checkout aislado de la app piloto:
 2. Añadir la configuración mínima y reversible para la integración detectada (RSpec/Minitest), incluyendo carga de Rails y aislamiento de DB si corresponde.
 3. Usar la licencia/configuración adecuada para un repositorio abierto y fijar la versión de la herramienta.
 4. Mutar **1–3 sujetos** pequeños, con selectores explícitos. No mutar toda la app como primera corrida.
-5. Guardar comando, configuración, duración, número de mutantes, killed/alive/error/timeout y reporte crudo.
+5. Guardar comando, configuración, duración, número de mutantes, killed/alive/error/timeout y el reporte/sesión cruda. Exportar o parsear datos solo si la versión y edición usadas ofrecen un formato apto; no asumir JSON machine-readable en el flujo OSS.
 
 **Criterio de salida:** al menos una corrida reproducible o una causa concreta de bloqueo (Ruby incompatible, runner, DB, flakiness, etc.).
 
