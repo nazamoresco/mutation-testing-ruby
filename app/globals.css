@@ -4,8 +4,25 @@
 
 @theme inline { --font-sans: var(--font-instrument-sans); --font-mono: var(--font-plex-mono); --color-background: var(--background); --color-foreground: var(--foreground); --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground); --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground); --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground); --color-border: var(--border); --color-ring: var(--ring); }
 
-:root { --background: #111216; --foreground: #f6f3ec; --primary: #ffb654; --primary-foreground: #111216; --secondary: #f6f3ec; --secondary-foreground: #111216; --muted: #1a1c22; --muted-foreground: #a8a49e; --border: rgb(255 255 255 / 12%); --ring: #ffb654; --radius: 0; }
+:root { --background: #fffaf6; --foreground: #2a171a; --primary: #9c1f31; --primary-foreground: #fffaf6; --secondary: #f4e3df; --secondary-foreground: #42191f; --muted: #f8eeea; --muted-foreground: #75555a; --border: rgb(108 35 48 / 18%); --ring: #9c1f31; --radius: 0; }
 * { border-color: var(--border); }
 html, body { margin: 0; background: var(--background); }
 body { color: var(--foreground); font-family: var(--font-instrument-sans), Arial, sans-serif; }
 button { font-family: inherit; }
+
+/* Ruby-inspired light presentation palette. */
+.ruby-light [class~="border-white/10"], .ruby-light [class~="border-white/15"] { border-color: rgb(108 35 48 / 18%); }
+.ruby-light [class~="text-white/35"] { color: rgb(117 85 90 / 70%); }
+.ruby-light [class~="text-white/40"], .ruby-light [class~="text-white/45"], .ruby-light [class~="text-white/50"] { color: rgb(117 85 90 / 85%); }
+.ruby-light [class~="text-white/65"], .ruby-light [class~="text-white/70"], .ruby-light [class~="text-white/80"] { color: rgb(66 25 31 / 82%); }
+.ruby-light [class~="text-white"] { color: #2a171a; }
+.ruby-light [class~="bg-black/20"] { background-color: #f7e8e4; }
+.ruby-light [class~="bg-white/[.03]"] { background-color: #fffdfb; }
+.ruby-light [class~="bg-[#1a1c22]"] { background-color: #fffdfb; }
+.ruby-light [class~="hover:bg-white/7"]:hover { background-color: #f4e3df; }
+.ruby-light [class~="text-[#ffb654]"] { color: #9c1f31; }
+.ruby-light [class~="border-[#ffb654]"] { border-color: #9c1f31; }
+.ruby-light [class~="border-[#ffb654]/60"] { border-color: rgb(156 31 49 / 60%); }
+.ruby-light [class~="bg-[#ffb654]"] { background-color: #9c1f31; }
+.ruby-light [class~="text-[#111216]"] { color: #fffaf6; }
+.ruby-light [class~="text-[#f6f3ec]"] { color: #2a171a; }

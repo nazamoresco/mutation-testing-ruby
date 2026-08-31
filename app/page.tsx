@@ -64,7 +64,7 @@ export default function Home() {
     setActive((value) => Math.max(0, Math.min(slides.length - 1, value + direction)));
 
   return (
-    <main className="min-h-screen bg-[#111216] text-[#f6f3ec] selection:bg-[#ffb654] selection:text-[#111216]">
+    <main className="ruby-light min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
       <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8">
         <div className="flex items-center gap-3">
           <span className="grid size-8 place-items-center border border-[#ffb654] text-xs font-bold text-[#ffb654]">M</span>
