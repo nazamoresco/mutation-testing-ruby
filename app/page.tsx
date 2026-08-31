@@ -7,42 +7,126 @@ import {
   Check,
   CircleDot,
   Code2,
+  Gauge,
+  GitBranch,
   MessageSquareText,
   MonitorUp,
+  Scale,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
 
 type Slide = {
   index: string;
   section: string;
+  minutes: number;
   title: string;
   copy: string;
-  code?: string;
   annotation: string;
-  minutes: number;
+  code?: string;
+  visual: Visual;
   presenter: string[];
   claims: string[];
 };
 
 const slides: Slide[] = [
-  { index: '01', section: 'Apertura', minutes: 2, title: 'Mutation Testing en Ruby: ¿vale la pena?', copy: 'Las pruebas verdes son el comienzo, no el final. La pregunta es: ¿qué decisiones importantes detectaría realmente tu suite?', code: 'def adult?\n  age >= 18\nend\n\n# ¿qué ocurre si >= se vuelve >?', annotation: 'Una charla para personas que escriben Ruby y no quieren confundir actividad con evidencia.', presenter: ['Abrí con una experiencia conocida: CI verde, incidente igual.', 'Presentá la charla como una pregunta, no como propaganda de una herramienta.'], claims: ['Una suite verde puede seguir siendo semánticamente superficial.', 'La calidad de los tests importa tanto como la cantidad de tests.'] },
-  { index: '02', section: 'El problema', minutes: 3, title: 'Cobertura ejecuta. Mutant pregunta: “¿se habría notado?”', copy: 'Cobertura de líneas confirma que el código pasó por una prueba. Mutation testing comprueba si una modificación pequeña altera el resultado de la suite.', annotation: 'Cobertura semántica: evidencia de que una decisión observable está especificada.', presenter: ['No plantees cobertura y mutación como enemigos: responden preguntas diferentes.', 'Pedí un ejemplo del público de una línea cubierta con una aserción débil.'], claims: ['Ejecutar código no equivale a especificar comportamiento.', 'La métrica más útil no siempre es la más fácil de calcular.'] },
-  { index: '03', section: 'Qué es', minutes: 3, title: 'Un mutante es un cambio pequeño que tu suite debería matar', copy: 'Se parte del programa original, se altera una única semántica y se ejecutan los tests. Si fallan, el mutante muere. Si pasan, vive.', code: 'original: age >= 18\nmutante:  age > 18\n\nkilled → test falla\nalive  → test pasa', annotation: 'Cada mutante vivo es una invitación a mirar una decisión que todavía no tiene un contrato verificable.', presenter: ['Definí killed y alive con calma: son los dos conceptos que ordenan todo lo demás.', 'Aclará que un alive no siempre significa “escribí otro test”.'], claims: ['Un mutante vivo puede indicar una prueba ausente o código redundante.', 'Mutation testing no busca errores al azar: usa cambios representativos.'] },
-  { index: '04', section: 'Ejemplo', minutes: 4, title: 'El borde que no estaba especificado', copy: 'Si solo probamos 17 y 19, cambiar >= por > no rompe nada. El caso que falta no es “más cobertura”: es hacer explícito qué pasa a los 18.', code: 'expect(Person.new(age: 17).adult?).to be(false)\nexpect(Person.new(age: 18).adult?).to be(true)\nexpect(Person.new(age: 19).adult?).to be(true)', annotation: 'Una mutación útil convierte un borde implícito en una conversación concreta de producto y dominio.', presenter: ['Mostrá primero el mutante vivo y recién después agregá el test de 18.', 'Preguntá: ¿quién decide que 18 es el borde?'], claims: ['Los casos límite suelen ser reglas de negocio disfrazadas de operadores.', 'La mejor mejora de test es la que expresa por qué el resultado importa.'] },
-  { index: '05', section: 'Ruby', minutes: 3.5, title: 'Mutant es el punto de partida práctico', copy: 'Mutant se integra con RSpec y Minitest. La recomendación es empezar por una zona pequeña, importante y con una suite estable.', code: 'bundle exec mutant run \\\n+  --use rspec \\\n+  --since main \\\n+  "Billing::Price#calculate"', annotation: 'El coste real depende de tu aislamiento de estado, la base de datos y el tamaño de la suite.', presenter: ['Nombrá alternativas, pero no conviertas la charla en una comparación de gems.', 'Explicá --since como una forma de introducir mutación sin ahogarse.'], claims: ['Empezar por el diff es más sostenible que mutar todo el repositorio.', 'La estabilidad de la suite es un requisito, no un detalle.'] },
-  { index: '06', section: 'Under the hood', minutes: 4, title: 'Una máquina de contraejemplos para la suite', copy: 'Mutant descubre sujetos, analiza la estructura del código, genera un cambio por vez y deja que el runner clasifique el resultado.', code: 'sujeto → AST → mutante\n      → tests → veredicto\n\nkilled / alive / error', annotation: 'La pregunta interna siempre es la misma: ¿la suite distingue este programa del original?', presenter: ['Usá el término AST sin entrar en una clase de compiladores.', 'Conectá la arquitectura con por qué los estados globales y la base de datos importan.'], claims: ['La herramienta trabaja sobre semánticas, no sobre líneas aisladas.', 'Un error de runner es información sobre el entorno, no cobertura.'] },
-  { index: '07', section: 'Resultados', minutes: 3, title: 'Cada mutante vivo abre una conversación de diseño', copy: 'Podés añadir un test, simplificar el código o registrar una excepción razonada. Ignorar el resultado no debería ser la opción por defecto.', annotation: 'El resultado productivo de mutar no es “más tests”; puede ser menos código y una intención más clara.', presenter: ['Mostrá que borrar código también puede ser una victoria.', 'Separá alive de flakiness: primero hay que confiar en el runner.'], claims: ['Un test no es el único artefacto válido para matar un mutante.', 'La simplificación es una respuesta de calidad, no una derrota.'] },
-  { index: '08', section: 'Calidad y seguridad', minutes: 4, title: 'Las defensas también son contratos', copy: 'Autorización, tenancy, límites y validaciones se benefician cuando las pruebas reaccionan al eliminar o invertir una condición.', code: 'def allowed?(user, account)\n  user.admin? || account.owner?(user)\nend\n\n# mutante: true', annotation: 'No es un escáner de vulnerabilidades: verifica que las defensas que decidiste tengan pruebas sensibles a su cambio.', presenter: ['Marcá el límite con claridad: no reemplaza threat modeling ni una auditoría.', 'Pedí al público una regla de autorización que les daría miedo mutar.'], claims: ['La seguridad necesita pruebas que fallen cuando una defensa se debilita.', 'Mutation testing valida contratos que ya decidiste, no descubre todos los que faltan.'] },
-  { index: '09', section: 'Adopción', minutes: 3, title: 'Una señal de alta fidelidad, no una puerta imposible', copy: 'Primero confirmá que la suite corre de forma estable. Después elegí reglas críticas, usalo en cambios recientes y revisá los vivos uno por uno.', annotation: 'Una métrica sana es decisiones aclaradas y mutaciones revisadas, no un porcentaje que sube sin contexto.', presenter: ['Proponé una estrategia en cuatro pasos: base, foco, diff, revisión.', 'No prometas 100%; explicá por qué no es el objetivo.'], claims: ['El foco reduce coste y mejora la conversación.', 'Los porcentajes sin contexto pueden incentivar malos tests.'] },
-  { index: '10', section: 'Límites', minutes: 2.5, title: 'Mutation testing concentra el juicio donde importa', copy: 'Tiene coste, mutantes equivalentes y sensibilidad a flakiness. Funciona mejor junto a revisión humana, tipos, análisis estático y threat modeling.', annotation: 'Una herramienta fuerte no reemplaza el criterio: obliga a aplicarlo en un punto concreto.', presenter: ['Decí explícitamente dónde no ayuda para ganar credibilidad.', 'Cerrá esta parte con la pregunta: ¿qué decisiones no nos podemos permitir errar?'], claims: ['100% mutation score no es el producto.', 'El objetivo es verificar decisiones relevantes, no coleccionar métricas.'] },
-  { index: '11', section: 'Cierre', minutes: 3, title: 'Si la IA escribe más código, la escasez no será escribir', copy: 'El valor se mueve hacia herramientas que verifican, restringen y explican software: mutación, complejidad, análisis estático, contraejemplos y observabilidad de decisiones.', annotation: 'Menos skills que producen código sin verificar. Más metacódigo que convierte velocidad en confianza calibrada.', presenter: ['Volvé a la pregunta del inicio: ¿vale la pena? Sí, donde una decisión importa más que el coste de comprobarla.', 'Dejá una pregunta abierta sobre qué herramienta “un nivel arriba” falta en el stack de cada persona.'], claims: ['La IA aumenta el valor de la verificación, no elimina la necesidad de criterio.', 'La próxima capa de herramientas puede ser más interesante que otra capa de generación.'] },
+  {
+    index: '01', section: 'La pregunta', minutes: 2, visual: 'question',
+    title: 'Mutation Testing en Ruby: ¿vale la pena?',
+    copy: 'No empezamos con una herramienta. Empezamos con una decisión: ¿cuándo vale la pena pagar el coste de comprobar si nuestros tests distinguen el comportamiento correcto del incorrecto?',
+    annotation: 'La tesis: mutation testing vale donde una decisión relevante justifica el coste de verificarla.',
+    presenter: ['Abrí con una suite verde que no evitó un incidente o una regresión.', 'Prometé una respuesta condicionada: no es para todo proyecto, todo archivo ni todo commit.'],
+    claims: ['Una suite verde es evidencia, pero no toda la evidencia que necesitamos.', 'La pregunta interesante no es “¿podemos usar Mutant?”, sino “¿dónde nos devuelve valor?”.'],
+  },
+  {
+    index: '02', section: 'Cobertura', minutes: 3, visual: 'coverage',
+    title: 'La línea corrió. ¿Pero su significado estaba probado?',
+    copy: 'Line coverage registra que una línea fue ejecutada. Eso puede demostrar que no explotó en un escenario; no demuestra que cada decisión semántica de esa línea responda al requerimiento.',
+    annotation: 'Cobertura de ejecución y cobertura semántica contestan preguntas distintas. No son métricas enemigas.',
+    code: 'def adult?\n  age >= 18\nend',
+    presenter: ['Pedí al público un ejemplo de una línea cubierta por un test con una aserción débil.', 'Mostrá que 17 y 19 pueden ejecutar la misma línea sin especificar el borde de 18.'],
+    claims: ['100% de line coverage no equivale a 100% de confianza semántica.', 'La cobertura indica por dónde pasó la suite; Mutant pregunta qué diferencia habría detectado.'],
+  },
+  {
+    index: '03', section: 'Mecanismo', minutes: 4, visual: 'mutation',
+    title: 'Mutant altera una decisión pequeña y desafía a la suite',
+    copy: 'Parte del programa original, aplica una mutación por vez y corre los tests relevantes. Si fallan, el mutante muere. Si pasan, ambas versiones tienen semánticas distintas que la suite no distingue.',
+    annotation: 'No busca “errores aleatorios”: genera contraejemplos pequeños a partir de operadores y estructuras conocidas.',
+    code: 'original  age >= 18\nmutante   age > 18\n\nkilled → test falla\nalive  → test pasa',
+    presenter: ['Recorré el diagrama de izquierda a derecha: original, mutación, tests, veredicto.', 'Definí killed y alive antes de hablar de score o herramientas.'],
+    claims: ['Un mutante vivo no es una falla automática: es una pregunta abierta sobre el contrato.', 'El valor está en la diferencia semántica que la suite dejó pasar.'],
+  },
+  {
+    index: '04', section: 'Decisión', minutes: 3, visual: 'decision',
+    title: 'Un mutante vivo no pide solo “más tests”',
+    copy: 'Cuando un mutante sobrevive, podemos agregar un test, simplificar código redundante, documentar una equivalencia o descubrir que la suite o el entorno no eran confiables. La salida es una decisión de diseño.',
+    annotation: 'El buen resultado no siempre es más código: a veces es menos semántica accidental.',
+    presenter: ['Mostrá primero la ruta de simplificación; sorprende y evita vender una métrica vacía.', 'Separá “equivalente” de “no entendimos aún”: este último debe quedar abierto, no descartado.'],
+    claims: ['Mutation testing convierte una ambigüedad implícita en una conversación revisable.', 'Ignorar un alive por defecto es perder la señal más valiosa de la herramienta.'],
+  },
+  {
+    index: '05', section: 'Ruby', minutes: 3, visual: 'ruby',
+    title: 'En Ruby, los mutantes conocen el lenguaje que estamos usando',
+    copy: 'Mutant integra RSpec y Minitest y trabaja con mutaciones de Ruby. En Rails, la puesta en marcha también depende del require correcto, eager loading y aislamiento de la base de tests.',
+    annotation: 'Hay alternativas para evaluar; la charla no necesita un ranking de gems, sino criterios para elegir y adoptar.',
+    code: 'bundle exec mutant run \\\n+  --use rspec \\\n+  --since main \\\n+  "Billing::Price#calculate"',
+    presenter: ['Explicá que `--since` permite empezar por lo cambiado y evita mutar todo el repositorio de una vez.', 'Mencioná licencia y compatibilidad como parte del coste real; no como nota al pie.'],
+    claims: ['La suite debe ser estable antes de exigirle mutation testing.', 'La integración con el framework es parte de la evidencia, no una configuración trivial.'],
+  },
+  {
+    index: '06', section: 'Coste', minutes: 4, visual: 'cost',
+    title: 'El coste tiene tres relojes: ejecución, CI y revisión',
+    copy: 'Cada mutante corre pruebas. Eso suma tiempo de cómputo y dinero de CI. Los supervivientes además consumen tiempo humano y, si usamos LLMs, tokens. Un score alto no paga por sí solo esos costes.',
+    annotation: 'La unidad de coste no es solo “minutos de CI”: es minutos de decisión confiable por comportamiento crítico.',
+    presenter: ['No prometas que la IA elimina el coste: desplaza parte del esfuerzo hacia clasificación y verificación.', 'Contrastá “mutar todo” con “mutar cambios recientes y reglas críticas”.'],
+    claims: ['Un pipeline barato que no genera decisiones útiles sigue siendo caro.', 'La estrategia incremental es una respuesta de producto y de infraestructura, no una concesión.'],
+  },
+  {
+    index: '07', section: 'Evidencia', minutes: 3, visual: 'evidence',
+    title: 'Para hablar de coste, necesitamos datos de apps reales',
+    copy: 'En lugar de basarnos en una demo, vamos a explorar Real World Rails: un corpus de más de 200 checkouts. Primero inventario estático; después un piloto pequeño, reproducible y atribuido a una versión concreta.',
+    annotation: 'La charla puede mostrar investigación en progreso sin convertir una muestra pequeña en una verdad universal.',
+    presenter: ['Contá el orden: detectar adopción existente, seleccionar un piloto viable, medir baseline y mutar pocos sujetos.', 'Marcá el sesgo: proyectos de código abierto, versiones distintas y suites que pueden no correr hoy.'],
+    claims: ['Antes de comparar resultados, hay que registrar compatibilidad, baseline y configuración.', 'Una muestra honesta vale más que una estadística inflada.'],
+  },
+  {
+    index: '08', section: 'Piloto', minutes: 4, visual: 'pilot',
+    title: 'El piloto convierte reportes en datos, no en anécdotas',
+    copy: 'Para cada mutante vivo guardaremos el sujeto, operador, ejecución, clasificación, evidencia y resolución. Solo contaremos un bug real cuando haya una confirmación revisable: un test, una corrección o una especificación explícita.',
+    annotation: 'CSV para comparar y JSON crudo para poder volver a leer el reporte sin perder contexto.',
+    presenter: ['Mostrá que un LLM propone una clasificación, pero que el contrato sigue siendo humano y de dominio.', 'Explicá que “equivalente” y “falla del entorno” también son datos, no basura.'],
+    claims: ['Un reporte de Mutant sin una taxonomía termina siendo ruido.', 'La reproducibilidad permite que la charla sea refutable y mejorable.'],
+  },
+  {
+    index: '09', section: 'LLMs', minutes: 3, visual: 'llm',
+    title: 'Un LLM puede acelerar la lectura; no decidir el requerimiento',
+    copy: 'Podemos pedirle a un LLM que explique el diff, encuentre tests relacionados y proponga una clasificación. Pero aceptar una simplificación o escribir un test es una decisión de producto, seguridad y dominio.',
+    annotation: 'La IA no convierte una señal en verdad; puede reducir el coste de llegar a una decisión bien fundamentada.',
+    presenter: ['Evitá la promesa de “auto-fix”: el experimento debe medir también desacuerdos y falsos positivos del LLM.', 'Conectá esta idea con revisión de PRs generados por IA.'],
+    claims: ['La trazabilidad de por qué aceptamos una decisión importa más que una respuesta fluida.', 'Los LLMs pueden ser un buen primer lector de mutantes, no el juez final.'],
+  },
+  {
+    index: '10', section: 'Adopción', minutes: 3, visual: 'adoption',
+    title: 'Vale la pena donde se cruzan criticidad, estabilidad y foco',
+    copy: 'Empezaría por reglas de autorización, tenancy, límites, cálculos de dinero o cambios sensibles. Si la suite es flaky, no hay baseline o el coste supera la señal, primero hay trabajo previo que hacer.',
+    annotation: 'No es una puerta de CI universal. Es una señal de alta fidelidad para zonas donde fallar cuesta más.',
+    presenter: ['Pedí que cada persona piense una regla que no puede permitirse interpretar mal.', 'Cerrá el marco con tres preguntas: ¿qué importa?, ¿podemos medirlo?, ¿podemos revisarlo?'],
+    claims: ['Seguridad no requiere más tests en abstracto: requiere tests que fallen cuando una defensa se debilita.', 'Un buen rollout es selectivo, medible y revisable.'],
+  },
+  {
+    index: '11', section: 'Reflexión', minutes: 3, visual: 'reflection',
+    title: 'Si la IA escribe más código, la escasez no será escribir',
+    copy: 'El lugar interesante puede estar un nivel más arriba: herramientas que verifican, restringen y explican código generado. Mutation testing, complejidad, análisis estático y contraejemplos convierten velocidad en confianza calibrada.',
+    annotation: 'Menos automatización que produce código sin verificar. Más metacódigo que nos ayuda a decidir si ese código merece confianza.',
+    presenter: ['Volvé a la pregunta inicial: vale la pena cuando la decisión importa más que el coste de comprobarla.', 'Terminá invitando al público a nombrar una herramienta de verificación que les falta hoy.'],
+    claims: ['La generación de código eleva el valor de la verificación.', 'La siguiente capa interesante de herramientas puede ser la que prueba el output de la anterior.'],
+  },
 ];
 
-const formatDuration = (minutes: number) =>
-  Number.isInteger(minutes) ? `${minutes} min` : `${Math.floor(minutes)} min 30 s`;
-
-const formatElapsed = (minutes: number) =>
-  `${Math.floor(minutes)}:${minutes % 1 === 0 ? '00' : '30'}`;
+const formatDuration = (minutes: number) => Number.isInteger(minutes) ? `${minutes} min` : `${Math.floor(minutes)} min 30 s`;
+const formatElapsed = (minutes: number) => `${Math.floor(minutes)}:${minutes % 1 === 0 ? '00' : '30'}`;
 
 const rubyToken = /(#.*$|'[^']*'|"[^"\n]*"|\b(?:def|end|class|module|if|else|elsif|unless|do|case|when|return)\b|\b(?:true|false|nil)\b|:\w+|\b\d+\b|\b[a-z_]\w*[!?]?(?=\())/gm;
 
@@ -61,9 +145,37 @@ function RubyCode({ code }: { code: string }) {
   });
 }
 
+function Diagram({ visual, coverageMode, setCoverageMode }: { visual: Visual; coverageMode: 'line' | 'semantic'; setCoverageMode: (mode: 'line' | 'semantic') => void }) {
+  const card = 'border border-[#6c2330]/20 bg-[#fffdfb] p-4 shadow-[0_10px_30px_rgba(91,30,42,.06)]';
+  const label = 'font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#9c1f31]';
+
+  if (visual === 'question') return <div className="grid gap-4 sm:grid-cols-3"><div className={`${card} sm:col-span-2`}><p className={label}>La decisión</p><p className="mt-4 text-2xl font-semibold tracking-tight text-[#2a171a]">¿El valor de detectar esta diferencia supera el coste de encontrarla?</p><div className="mt-6 h-px bg-[#6c2330]/15"><div className="h-px w-2/3 animate-pulse bg-[#9c1f31]" /></div></div><div className="border border-[#9c1f31] bg-[#9c1f31] p-4 text-[#fffaf6]"><Scale className="size-5" /><p className="mt-8 font-mono text-xs uppercase tracking-[.14em]">No es “sí” o “no”</p><p className="mt-2 text-sm leading-relaxed text-white/80">Es una decisión situada.</p></div></div>;
+
+  if (visual === 'coverage') return <div className={card}><div className="mb-5 flex gap-2"><button onClick={() => setCoverageMode('line')} className={`border px-3 py-1.5 text-xs font-semibold ${coverageMode === 'line' ? 'border-[#9c1f31] bg-[#9c1f31] text-[#fffaf6]' : 'border-[#6c2330]/20 text-[#75555a]'}`}>Line coverage</button><button onClick={() => setCoverageMode('semantic')} className={`border px-3 py-1.5 text-xs font-semibold ${coverageMode === 'semantic' ? 'border-[#9c1f31] bg-[#9c1f31] text-[#fffaf6]' : 'border-[#6c2330]/20 text-[#75555a]'}`}>Cobertura semántica</button></div><div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center"><div className="border border-[#6c2330]/15 bg-[#fffaf6] p-4"><p className={label}>Suite</p><p className="mt-2 font-mono text-sm text-[#42191f]">age: 17 → false<br />age: 19 → true</p></div><div className="mx-auto text-2xl text-[#9c1f31]">→</div><div className={`border p-4 transition-colors ${coverageMode === 'line' ? 'border-[#cfb5b8] bg-[#f8eeea]' : 'border-[#9c1f31] bg-[#fff5f4]'}`}><p className={label}>{coverageMode === 'line' ? 'Sabemos' : 'Todavía falta'}</p><p className="mt-2 text-sm leading-relaxed text-[#42191f]">{coverageMode === 'line' ? 'La línea se ejecutó sin explotar.' : '¿Qué pasa exactamente con age: 18?'}</p></div></div></div>;
+
+  if (visual === 'mutation') return <div className={`${card} overflow-hidden`}><div className="grid gap-3 sm:grid-cols-4 sm:items-stretch"><div className="border border-[#6c2330]/15 p-3"><p className={label}>Original</p><p className="mt-3 font-mono text-sm text-[#42191f]">age &gt;= 18</p></div><div className="border border-[#9c1f31] bg-[#fff5f4] p-3"><p className={label}>Mutante</p><p className="mt-3 font-mono text-sm font-semibold text-[#9c1f31]">age &gt; 18</p></div><div className="border border-[#6c2330]/15 p-3"><p className={label}>Suite</p><p className="mt-3 text-sm text-[#42191f]">ejecutar tests</p><div className="mt-3 h-1 overflow-hidden bg-[#f4e3df]"><div className="h-full w-2/3 animate-pulse bg-[#9c1f31]" /></div></div><div className="border border-[#6c2330]/15 p-3"><p className={label}>Veredicto</p><p className="mt-3 text-sm font-semibold text-[#42191f]">killed <span className="text-[#9a7073]">/</span> alive</p></div></div></div>;
+
+  if (visual === 'decision') return <div className="grid gap-3 sm:grid-cols-2"><div className="border border-[#9c1f31] bg-[#9c1f31] p-4 text-[#fffaf6]"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-white/70">Mutante vivo</p><p className="mt-2 text-xl font-semibold">Una diferencia no detectada</p></div><div className="grid grid-cols-2 gap-3"><div className={card}><Check className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Agregar test</p></div><div className={card}><GitBranch className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Simplificar</p></div><div className={card}><CircleDot className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Equivalente</p></div><div className={card}><Gauge className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Reparar entorno</p></div></div></div>;
+
+  if (visual === 'ruby') return <div className={card}><div className="grid gap-3 sm:grid-cols-3"><div><p className={label}>Lenguaje</p><p className="mt-2 text-lg font-semibold">Operadores Ruby</p></div><div><p className={label}>Integración</p><p className="mt-2 text-lg font-semibold">RSpec · Minitest</p></div><div><p className={label}>Rails</p><p className="mt-2 text-lg font-semibold">Carga · DB · workers</p></div></div><div className="mt-5 flex flex-wrap gap-2"><span className="border border-[#9c1f31]/30 bg-[#fff5f4] px-2 py-1 font-mono text-xs text-[#9c1f31]">&gt;= → &gt;</span><span className="border border-[#9c1f31]/30 bg-[#fff5f4] px-2 py-1 font-mono text-xs text-[#9c1f31]">|| → false</span><span className="border border-[#9c1f31]/30 bg-[#fff5f4] px-2 py-1 font-mono text-xs text-[#9c1f31]">statement → delete</span></div></div>;
+
+  if (visual === 'cost') return <div className="grid gap-3 sm:grid-cols-3"><div className={card}><p className={label}>01 · Ejecución</p><div className="mt-5 h-2 bg-[#f4e3df]"><div className="h-full w-[72%] bg-[#9c1f31]" /></div><p className="mt-3 text-sm text-[#75555a]">tests por mutante</p></div><div className={card}><p className={label}>02 · CI</p><div className="mt-5 h-2 bg-[#f4e3df]"><div className="h-full w-[50%] bg-[#b04b5f]" /></div><p className="mt-3 text-sm text-[#75555a]">minutos + infraestructura</p></div><div className={card}><p className={label}>03 · Revisión</p><div className="mt-5 h-2 bg-[#f4e3df]"><div className="h-full w-[85%] bg-[#6b3d7a]" /></div><p className="mt-3 text-sm text-[#75555a]">personas + tokens</p></div></div>;
+
+  if (visual === 'evidence') return <div className={card}><div className="flex items-center justify-between"><p className={label}>Real World Rails</p><span className="font-mono text-2xl font-semibold text-[#9c1f31]">214</span></div><p className="mt-1 text-sm text-[#75555a]">checkouts indexados para explorar</p><div className="mt-5 grid grid-cols-4 gap-2">{['inventario', 'baseline', 'piloto', 'revisión'].map((item, index) => <div className="border border-[#6c2330]/15 p-2" key={item}><span className="font-mono text-xs text-[#9c1f31]">0{index + 1}</span><p className="mt-4 text-xs font-semibold">{item}</p></div>)}</div></div>;
+
+  if (visual === 'pilot') return <div className={`${card} relative`}><div className="absolute left-[12%] right-[12%] top-[49%] hidden h-px bg-[#9c1f31]/30 sm:block" /><div className="relative grid gap-3 sm:grid-cols-5">{['app + revisión', 'suite baseline', 'sujeto acotado', 'mutantes vivos', 'CSV + evidencia'].map((item, index) => <div className="bg-[#fffdfb] p-3" key={item}><span className="grid size-6 place-items-center rounded-full bg-[#9c1f31] font-mono text-xs text-[#fffaf6]">{index + 1}</span><p className="mt-5 text-xs font-semibold leading-snug text-[#42191f]">{item}</p></div>)}</div></div>;
+
+  if (visual === 'llm') return <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr]"><div className={card}><Sparkles className="size-5 text-[#6b3d7a]" /><p className="mt-5 text-sm font-semibold">LLM: explica, agrupa y propone</p><p className="mt-2 text-xs text-[#75555a]">primer lector del reporte</p></div><div className="self-center text-2xl text-[#9c1f31]">→</div><div className="border border-[#9c1f31] bg-[#fff5f4] p-4"><MessageSquareText className="size-5 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Humano: valida el contrato</p><p className="mt-2 text-xs text-[#75555a]">decisión de dominio y evidencia</p></div></div>;
+
+  if (visual === 'adoption') return <div className={card}><p className={label}>Filtro de adopción</p><div className="mt-5 grid gap-2 sm:grid-cols-3">{[['Criticidad', '¿fallar cuesta?'], ['Estabilidad', '¿la suite es confiable?'], ['Foco', '¿podemos acotar?']].map(([title, copy]) => <div className="border border-[#6c2330]/15 p-3" key={title}><p className="font-semibold text-[#42191f]">{title}</p><p className="mt-2 text-xs text-[#75555a]">{copy}</p></div>)}</div><div className="mt-4 border-l-2 border-[#9c1f31] pl-3 text-sm font-semibold text-[#42191f]">Las tres en verde → buen primer candidato</div></div>;
+
+  return <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr]"><div className={card}><p className={label}>IA</p><p className="mt-4 text-lg font-semibold">produce código y tests</p></div><div className="self-center text-2xl text-[#9c1f31]">↑</div><div className="border border-[#9c1f31] bg-[#fff5f4] p-4"><p className={label}>Metacódigo</p><p className="mt-4 text-lg font-semibold">verifica, restringe y explica</p></div></div>;
+}
+
 export default function Home() {
   const [active, setActive] = useState(0);
   const [presenterMode, setPresenterMode] = useState(false);
+  const [coverageMode, setCoverageMode] = useState<'line' | 'semantic'>('line');
   const current = slides[active];
   const minutesBefore = slides.slice(0, active).reduce((total, slide) => total + slide.minutes, 0);
 
@@ -77,93 +189,21 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const go = (direction: -1 | 1) =>
-    setActive((value) => Math.max(0, Math.min(slides.length - 1, value + direction)));
+  const go = (direction: -1 | 1) => setActive((value) => Math.max(0, Math.min(slides.length - 1, value + direction)));
 
-  return (
-    <main className="ruby-light min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
-      <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8">
-        <div className="flex items-center gap-3">
-          <span className="grid size-8 place-items-center border border-[#ffb654] text-xs font-bold text-[#ffb654]">M</span>
-          <div>
-            <p className="text-sm font-semibold tracking-tight">Mutation Testing en Ruby</p>
-            <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Experiencia de charla</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant={!presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => setPresenterMode(false)}>Charla</Button>
-          <Button variant={presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => setPresenterMode(true)}><MonitorUp /> Presentador</Button>
-        </div>
-      </header>
+  return <main className="min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
+    <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
+      <div className="flex items-center gap-3"><span className="grid size-8 place-items-center bg-[#9c1f31] text-xs font-bold text-[#fffaf6]">M</span><div><p className="text-sm font-semibold tracking-tight">Mutation Testing en Ruby</p><p className="text-[10px] uppercase tracking-[.15em] text-[#75555a]">¿vale la pena?</p></div></div>
+      <div className="flex items-center gap-2"><Button variant={!presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => setPresenterMode(false)}>Charla</Button><Button variant={presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => setPresenterMode(true)}><MonitorUp /> Presentador</Button></div>
+    </header>
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)]">
-        <nav className="border-b border-white/10 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r">
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">Recorrido</p>
-          <div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">
-            {slides.map((slide, index) => (
-              <button key={slide.index} onClick={() => setActive(index)} className={`group flex items-center gap-3 px-2 py-2 text-left transition ${index === active ? 'bg-[#ffb654] text-[#111216]' : 'text-white/50 hover:bg-white/7 hover:text-white'}`}>
-                <span className="font-mono text-xs">{slide.index}</span>
-                <span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span>
-              </button>
-            ))}
-          </div>
-          <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-relaxed text-white/40"><span className="block font-mono text-[#ffb654]">35 min</span>de contenido + 5 min de preguntas</p>
-        </nav>
+    <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)]">
+      <nav className="border-b border-[#6c2330]/15 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Recorrido</p><div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">{slides.map((slide, index) => <button key={slide.index} onClick={() => setActive(index)} className={`flex items-center gap-3 px-2 py-2 text-left transition ${index === active ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#75555a] hover:bg-[#f4e3df] hover:text-[#42191f]'}`}><span className="font-mono text-xs">{slide.index}</span><span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span></button>)}</div><p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]"><span className="block font-mono text-[#9c1f31]">35 min</span>de contenido + 5 min de preguntas</p></nav>
 
-        <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12">
-          <div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#ffb654]/20" aria-hidden="true" />
-          <div className="relative mx-auto max-w-5xl">
-            <div className="mb-8 flex items-center justify-between text-xs font-bold uppercase tracking-[0.16em] text-[#ffb654]">
-              <span>{current.section}</span>
-              <span>{current.index} / {String(slides.length).padStart(2, '0')}</span>
-            </div>
-
-            {!presenterMode ? (
-              <div className="grid gap-10 lg:grid-cols-[1.15fr_.85fr] lg:items-end">
-                <div>
-                  <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.05em] sm:text-6xl lg:text-7xl">{current.title}</h1>
-                  <p className="mt-7 max-w-2xl text-xl leading-relaxed text-white/65 sm:text-2xl">{current.copy}</p>
-                  <p className="mt-10 max-w-xl border-l-2 border-[#ffb654] pl-4 text-sm leading-relaxed text-white/50">{current.annotation}</p>
-                </div>
-                <div className="border border-white/10 bg-black/20 p-5 sm:p-7">
-                  <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-white/40"><Code2 className="size-4" /> Punto de fricción</div>
-                  <pre className="min-h-44 whitespace-pre-wrap font-mono text-[14px] leading-7"><RubyCode code={(current.code ?? current.annotation).replace(/^\+/gm, '')} /></pre>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]">
-                <div className="border border-[#ffb654]/60 bg-[#1a1c22] p-6 sm:p-9">
-                  <div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#ffb654]">
-                    <span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span>
-                    <span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span>
-                  </div>
-                  <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">{current.title}</h1>
-                  <p className="mt-4 text-xs font-mono text-white/40">Plan de charla: 35 min de contenido + 5 min de preguntas</p>
-                  <div className="mt-9 border-t border-white/10 pt-6">
-                    <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">Lo que conviene decir</p>
-                    <ul className="space-y-4">
-                      {current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-white/80"><Check className="mt-1 size-4 shrink-0 text-[#ffb654]" />{item}</li>)}
-                    </ul>
-                  </div>
-                </div>
-                <aside className="border border-white/10 bg-white/[.03] p-6 sm:p-8">
-                  <div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#ffb654]" /> Afirmaciones para comentar</div>
-                  <ol className="space-y-4">
-                    {current.claims.map((claim, index) => <li key={claim} className="border-l border-white/15 pl-4 text-base leading-relaxed text-white/70"><span className="mr-2 font-mono text-xs text-[#ffb654]">0{index + 1}</span>{claim}</li>)}
-                  </ol>
-                  <div className="mt-10 border-t border-white/10 pt-6 text-sm leading-relaxed text-white/45">{current.annotation}</div>
-                </aside>
-              </div>
-            )}
-
-            <footer className="mt-12 flex items-center justify-between border-t border-white/10 pt-5">
-              <Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button>
-              <div className="hidden items-center gap-2 text-xs text-white/35 sm:flex"><CircleDot className="size-3 text-[#ffb654]" /> Flechas para navegar · P para presentador</div>
-              <Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button>
-            </footer>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
+      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-5xl"><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
+        {!presenterMode ? <div className="grid gap-10 lg:grid-cols-[1.03fr_.97fr] lg:items-center"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
+        <footer className="mt-12 flex items-center justify-between border-t border-[#6c2330]/15 pt-5"><Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button><div className="hidden items-center gap-2 text-xs text-[#75555a] sm:flex"><CircleDot className="size-3 text-[#9c1f31]" /> Flechas para navegar · P para presentador</div><Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button></footer>
+      </div></section>
+    </div>
+  </main>;
 }
