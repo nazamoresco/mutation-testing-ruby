@@ -1,2 +1,2 @@
-app_id,repository_url,revision,ruby_version,rails_version,test_framework,mutation_tool,mutation_config,baseline_status,selected_for_pilot,notes
-pilot-tbd,,,,,,,,,no,"Seleccionar tras inventario y verificación de licencia, versión y suite"
+app_id,repository_url,revision,source_branch,license,ruby_version,rails_version,test_framework,mutation_tool,mutation_config,inventory_status,baseline_status,selected_for_pilot,notes
+pilot-tbd,,,,,,,,,,,no,"Seleccionar tras inventario y verificación de licencia, versión y suite"
