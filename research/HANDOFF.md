@@ -1,0 +1,123 @@
+# Handoff — piloto de Mutation Testing en Real World Rails
+
+Este documento permite continuar la investigación sin depender del historial del chat.
+
+## Pregunta de investigación
+
+En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y cuál es su coste técnico y de revisión? La meta no es maximizar un mutation score ni afirmar que todo mutante vivo es un bug; es producir datos trazables para una charla: adopción existente, viabilidad, coste, clases de decisiones y bugs confirmados.
+
+## Estado al 2026-08-31
+
+- Repositorio de trabajo: `nazamoresco/mutation-testing-ruby`.
+- La charla web y el material editorial están en `main`.
+- La línea de investigación vive en `research/real-world-rails-pilot`.
+- Se clonó el índice de Real World Rails en un checkout local separado; su `.gitmodules` enumera **214** checkouts. El índice no contiene los apps completos: son submódulos de repositorios externos.
+- Aún no se inventarió la adopción de gems ni se ejecutó Mutant en una aplicación. No reportar números de adopción, coste o bugs hasta completar las fases siguientes.
+
+## Material existente
+
+- `docs/talk-brief.md`: tesis y estructura de la charla.
+- `research/README.md`: objetivo, fases, métricas y fuentes.
+- `research/apps.csv`: inventario por aplicación.
+- `research/claims.csv`: afirmaciones y evidencia requerida.
+- `research/mutants.csv`: una fila por mutante vivo o resultado no concluyente.
+- `plans/2026-08-31-research-and-talk.md`: ramas y próximos cortes útiles.
+
+## Fuentes a conservar
+
+- Real World Rails: <https://github.com/eliotsykes/real-world-rails>
+- Mutant: <https://github.com/mbj/mutant>
+- Just et al., *Are Mutants a Valid Substitute for Real Faults in Software Testing?*: <https://homes.cs.washington.edu/~rjust/publ/mutants_real_faults_tr_2014.pdf>
+- Google Research, *Long Term Effects of Mutation Testing*: <https://research.google/pubs/long-term-effects-of-mutation-testing/>
+
+Usar documentación primaria para versiones, licencia, compatibilidad y flags de Mutant. La documentación actual de Mutant indica soporte para Rails, RSpec y Minitest; su versión actual requiere Ruby moderno. Cada app debe verificarse contra una versión fijada: el corpus contiene proyectos de distintas épocas.
+
+## Plan ejecutable
+
+### 1. Inventario estático del corpus
+
+Objetivo: saber qué proyectos ya declaran una herramienta de mutation testing, sin instalar ni ejecutar las 214 aplicaciones.
+
+1. Parsear `.gitmodules` del índice y extraer `app_id`, URL, path y branch configurada.
+2. Para cada URL, consultar de forma cacheada los archivos de raíz: `Gemfile`, `Gemfile.lock`, `.mutant.yml`, `mutant.yml`, `Rakefile`, `.rspec`, `test/`, `spec/` y workflows de CI cuando existan.
+3. Detectar, al menos: `mutant`, `mutant-rspec`, `mutant-minitest`, `evilution`, `mutineer` y cualquier script de mutation testing.
+4. Registrar también framework de tests, versión Ruby/Rails declarada, SHA o fecha de revisión, licencia si está clara y resultado de lectura (`found`, `not_found`, `unavailable`).
+5. No inferir “no usa mutation testing” si no se pudo leer el repositorio.
+
+**Criterio de salida:** `apps.csv` tiene una fila por checkout y cada campo ausente se distingue de un `not_found` confirmado.
+
+### 2. Seleccionar un piloto
+
+Objetivo: elegir una app representativa que pueda ejecutarse y mutarse sin convertir el setup en el experimento.
+
+Puntuar candidatos con estas reglas:
+
+- licencia de código abierto clara;
+- Ruby y Rails compatibles con una versión soportada por la herramienta elegida;
+- suite RSpec o Minitest presente;
+- setup documentado y dependencias de infraestructura acotadas;
+- al menos un método de dominio pequeño y significativo;
+- sin credenciales reales ni acciones externas necesarias para la suite.
+
+Registrar por qué se eligió el candidato y por qué se descartaron los demás. Si el primer candidato falla por compatibilidad o baseline, es un resultado de viabilidad: no arreglar ni modernizar la aplicación como parte del estudio.
+
+### 3. Baseline reproducible
+
+En un checkout aislado de la app piloto:
+
+1. Fijar URL, SHA, Ruby, Bundler, Rails, SO y hora.
+2. Instalar dependencias siguiendo el README, sin editar el proyecto de origen.
+3. Preparar DB/servicios de test según su documentación y ejecutar la suite normal al menos dos veces.
+4. Guardar duración, código de salida y flakiness observada.
+
+**Criterio de salida:** una suite verde y razonablemente estable, o una incompatibilidad documentada que descarte el piloto.
+
+### 4. Ejecutar Mutant de forma acotada
+
+1. Usar una rama local de experimento dentro del checkout aislado; jamás enviar cambios al repositorio de terceros.
+2. Añadir la configuración mínima y reversible para la integración detectada (RSpec/Minitest), incluyendo carga de Rails y aislamiento de DB si corresponde.
+3. Usar la licencia/configuración adecuada para un repositorio abierto y fijar la versión de la herramienta.
+4. Mutar **1–3 sujetos** pequeños, con selectores explícitos. No mutar toda la app como primera corrida.
+5. Guardar comando, configuración, duración, número de mutantes, killed/alive/error/timeout y reporte crudo.
+
+**Criterio de salida:** al menos una corrida reproducible o una causa concreta de bloqueo (Ruby incompatible, runner, DB, flakiness, etc.).
+
+### 5. Clasificar resultados vivos y no concluyentes
+
+Para cada resultado, completar `research/mutants.csv` con una de estas categorías:
+
+- `missing_test`: la semántica original importa y falta una especificación.
+- `simplification`: el código original tiene semántica innecesaria; el mutante puede ser mejor.
+- `equivalent`: no hay diferencia observable bajo el contrato actual.
+- `environment_error`: no se pudo concluir por setup, crash o dependencia externa.
+- `flaky`: el resultado no es estable.
+- `possible_real_bug`: hay una discrepancia plausible con el comportamiento requerido; requiere confirmación.
+- `out_of_scope`: el sujeto no era relevante para el piloto.
+
+Un LLM puede recibir el diff del mutante, el método, tests relacionados y documentación relevante para **proponer** categoría, test candidato y preguntas. Guardar prompt, modelo, respuesta y coste estimado. Una persona debe registrar el veredicto final y la evidencia.
+
+**Regla:** contar un `confirmed_real_bug` únicamente con una confirmación revisable: test que reproduce el problema, corrección validada o especificación explícita del proyecto. Nunca contar una conjetura del LLM como bug.
+
+### 6. Analizar y comunicar
+
+Separar siempre:
+
+- apps del inventario vs. apps ejecutables;
+- mutantes generados vs. resultados concluyentes;
+- mutantes vivos vs. tests agregados;
+- posibles bugs vs. bugs confirmados;
+- tiempo de cómputo vs. tiempo humano/LLM.
+
+Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones concretas. Evitar porcentajes grandilocuentes si la muestra es pequeña.
+
+## Guardrails
+
+- No publicar PRs, issues ni comentarios en proyectos de terceros sin autorización explícita.
+- No subir secretos, bases de datos, `vendor/`, reportes masivos ni credenciales al repositorio de la charla.
+- Mantener los checkouts de terceros fuera de este repositorio.
+- Registrar versiones exactas y comandos; no presentar resultados de una ejecución no reproducible.
+- Si un LLM ve código de terceros, limitar el contexto a lo necesario y conservar solo datos derivados o permitidos.
+
+## Primer prompt para la próxima sesión
+
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Empezá por el inventario estático de Real World Rails y actualizá `research/apps.csv` sin ejecutar aplicaciones. Reportá cobertura del inventario, errores de acceso y candidatos a piloto. No abras PRs ni modifiques repositorios de terceros.
