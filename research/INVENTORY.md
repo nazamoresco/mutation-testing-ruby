@@ -33,15 +33,12 @@ Repositorios no accesibles (404): `cartodb`, `heaven`, `hound` y `prison-visits`
 | Secundaria | `shinycms-ruby` | GPL-2.0; Ruby 3.4.5; Rails ~> 8.1.2; RSpec; única adopción detectada de Mutant. | PostgreSQL y Redis. |
 | Alternativa | `speakerline` | MIT; Ruby 3.3.5; Rails 8.0.5.1; RSpec; setup de tests con PostgreSQL documentado. | Confirmar que reCAPTCHA no sea requisito de la suite. |
 
-La recomendación es intentar primero `trailmix`. No está todavía seleccionada como piloto ejecutable: esa decisión queda condicionada a que el baseline se pueda instalar y correr dos veces sin cambios al proyecto de terceros.
+La recomendación era intentar primero `trailmix`. Quedó seleccionada como piloto ejecutable después del baseline reproducible descrito abajo.
+
+### Resultado del primer baseline
+
+El 2026-09-08, Ruby 3.4.2 no compiló contra OpenSSL 3.6.0 del host macOS. Para mantener el proyecto intacto, el baseline se ejecutó en un entorno Docker aislado. `trailmix` pasó dos corridas de RSpec (94 ejemplos, 0 fallas; 3,66 s y 3,35 s de RSpec), por lo que queda seleccionado. El detalle reproducible y los límites del entorno están en `research/baselines/trailmix-2026-09-08.md`.
 
 ## Siguiente paso
 
-Preparar un checkout aislado de `trailmix` en el SHA `3565d61e451a39c76ec952acf7e9196c810c5ea6` y hacer exclusivamente el baseline reproducible:
-
-1. Registrar SO, Ruby, Bundler, Rails y hora de inicio.
-2. Instalar siguiendo el README sin editar ni enviar cambios al repositorio de origen.
-3. Preparar solo los servicios de test documentados.
-4. Ejecutar la suite normal dos veces y guardar duración, código de salida y flakiness.
-
-Si el baseline falla por versión, infraestructura o estabilidad, registrar la causa como resultado de viabilidad y pasar a `shinycms-ruby`; no modernizar ni reparar la aplicación como parte del piloto.
+Preparar una configuración reversible de Mutant para `trailmix` en el mismo entorno Docker y elegir uno a tres métodos de dominio pequeños. Ejecutar únicamente esos sujetos, guardar el comando, versión, duración y reporte crudo, y no mutar toda la aplicación.

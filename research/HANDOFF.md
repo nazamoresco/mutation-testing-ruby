@@ -13,7 +13,8 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - La línea de investigación vive en `research/real-world-rails-pilot`.
 - Se clonó el índice de Real World Rails en un checkout local separado; su `.gitmodules` enumera **214** checkouts. El índice no contiene los apps completos: son submódulos de repositorios externos.
 - El inventario estático quedó actualizado en la rama `research/real-world-rails-pilot` (commit `39616d7`): 214 filas, 199 repositorios/rama legibles y 15 accesos no disponibles. El detalle, los límites y los candidatos están en `research/INVENTORY.md`.
-- `trailmix` es el candidato principal para el baseline; `shinycms-ruby` y `speakerline` son alternativas. Aún no se ejecutó Mutant ni una suite de aplicación: no reportar números de coste, mutantes o bugs hasta completar las fases siguientes.
+- `trailmix` fue seleccionado tras un baseline Docker reproducible: dos corridas de RSpec verdes (94 ejemplos, 0 fallas), sin flakiness observada. El detalle, el SHA y el límite de compatibilidad nativa macOS/OpenSSL están en `research/baselines/trailmix-2026-09-08.md`.
+- Aún no se ejecutó Mutant: no reportar números de mutantes o bugs hasta completar las fases siguientes.
 
 ## Material existente
 
@@ -122,4 +123,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Revisá `research/INVENTORY.md` y prepará únicamente el baseline reproducible de `trailmix` en el SHA registrado. Ejecutá la suite normal dos veces, registrá versiones, comandos, duración, código de salida y flakiness. No ejecutes Mutant todavía, no abras PRs y no modifiques repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Revisá el baseline de `trailmix` en `research/baselines/trailmix-2026-09-08.md` y configurá Mutant de forma reversible en el mismo entorno Docker. Elegí uno a tres sujetos pequeños, ejecutalos con selectores explícitos y registrá comando, versión, duración y reporte crudo. No mutar toda la app, no abrir PRs y no modificar repositorios de terceros.
