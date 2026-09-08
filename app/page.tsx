@@ -9,6 +9,7 @@ import {
   Code2,
   Gauge,
   GitBranch,
+  ExternalLink,
   MessageSquareText,
   MonitorUp,
   Scale,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
+type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection' | 'sources';
 
 type Slide = {
   index: string;
@@ -116,12 +117,20 @@ const slides: Slide[] = [
     claims: ['Seguridad no requiere más tests en abstracto: requiere tests que fallen cuando una defensa se debilita.', 'Un buen rollout es selectivo, medible y revisable.'],
   },
   {
-    index: '11', section: 'Reflexión', minutes: 3, visual: 'reflection',
+    index: '11', section: 'Reflexión', minutes: 2, visual: 'reflection',
     title: 'Si la IA escribe más código, la escasez no será escribir',
     copy: 'El lugar interesante puede estar un nivel más arriba: herramientas que verifican, restringen y explican código generado. Mutation testing, complejidad, análisis estático y contraejemplos convierten velocidad en confianza calibrada.',
     annotation: 'Menos automatización que produce código sin verificar. Más metacódigo que nos ayuda a decidir si ese código merece confianza.',
     presenter: ['Volvé a la pregunta inicial: vale la pena cuando la decisión importa más que el coste de comprobarla.', 'Terminá invitando al público a nombrar una herramienta de verificación que les falta hoy.'],
     claims: ['La generación de código eleva el valor de la verificación.', 'La siguiente capa interesante de herramientas puede ser la que prueba el output de la anterior.'],
+  },
+  {
+    index: '12', section: 'Fuentes', minutes: 1, visual: 'sources',
+    title: 'Fuentes para seguir la conversación',
+    copy: 'La explicación técnica de Mutant viene de su documentación oficial. Los papers y el corpus de apps reales nos sirven para poner esa herramienta en contexto y no convertir una demo en una conclusión universal.',
+    annotation: 'Las fuentes también dejan claro qué afirmamos sobre la herramienta y qué estamos investigando todavía.',
+    presenter: ['Agradecé a Mutant por la claridad de su nomenclatura: la charla adapta sus ideas, no las presenta como descubrimientos propios.', 'Indicá que Real World Rails y los papers quedan disponibles en la versión web para seguir profundizando.'],
+    claims: ['La evidencia sobre la herramienta y la evidencia sobre su efecto en proyectos reales no son la misma cosa.', 'Una buena fuente no elimina el juicio: permite discutirlo mejor.'],
   },
 ];
 
@@ -168,6 +177,17 @@ function Diagram({ visual, coverageMode, setCoverageMode }: { visual: Visual; co
   if (visual === 'llm') return <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr]"><div className={card}><Sparkles className="size-5 text-[#6b3d7a]" /><p className="mt-5 text-sm font-semibold">LLM: explica, agrupa y propone</p><p className="mt-2 text-xs text-[#75555a]">primer lector del reporte</p></div><div className="self-center text-2xl text-[#9c1f31]">→</div><div className="border border-[#9c1f31] bg-[#fff5f4] p-4"><MessageSquareText className="size-5 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Humano: valida el contrato</p><p className="mt-2 text-xs text-[#75555a]">decisión de dominio y evidencia</p></div></div>;
 
   if (visual === 'adoption') return <div className={card}><p className={label}>Filtro de adopción</p><div className="mt-5 grid gap-2 sm:grid-cols-3">{[['Criticidad', '¿fallar cuesta?'], ['Estabilidad', '¿la suite es confiable?'], ['Foco', '¿podemos acotar?']].map(([title, copy]) => <div className="border border-[#6c2330]/15 p-3" key={title}><p className="font-semibold text-[#42191f]">{title}</p><p className="mt-2 text-xs text-[#75555a]">{copy}</p></div>)}</div><div className="mt-4 border-l-2 border-[#9c1f31] pl-3 text-sm font-semibold text-[#42191f]">Las tres en verde → buen primer candidato</div></div>;
+
+  if (visual === 'sources') return <div className={card}><p className={label}>Documentación y evidencia</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{[
+    ['Mutant — README', 'https://github.com/mbj/mutant'],
+    ['Nomenclature', 'https://github.com/mbj/mutant/blob/main/docs/nomenclature.md'],
+    ['Rails Integration', 'https://github.com/mbj/mutant/blob/main/docs/rails.md'],
+    ['Incremental mode', 'https://github.com/mbj/mutant/blob/main/docs/incremental.md'],
+    ['Reading reports', 'https://github.com/mbj/mutant/blob/main/docs/reading-reports.md'],
+    ['Real World Rails', 'https://github.com/eliotsykes/real-world-rails'],
+    ['Just et al. — real faults', 'https://homes.cs.washington.edu/~rjust/publ/mutants_real_faults_tr_2014.pdf'],
+    ['Google Research — long-term effects', 'https://research.google/pubs/long-term-effects-of-mutation-testing/'],
+  ].map(([title, href]) => <a className="group flex items-center justify-between border border-[#6c2330]/15 px-3 py-2 text-sm font-medium text-[#42191f] transition hover:border-[#9c1f31] hover:bg-[#fff5f4]" href={href} key={href} rel="noreferrer" target="_blank"><span>{title}</span><ExternalLink className="size-3 text-[#9c1f31]" /></a>)}</div></div>;
 
   return <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr]"><div className={card}><p className={label}>IA</p><p className="mt-4 text-lg font-semibold">produce código y tests</p></div><div className="self-center text-2xl text-[#9c1f31]">↑</div><div className="border border-[#9c1f31] bg-[#fff5f4] p-4"><p className={label}>Metacódigo</p><p className="mt-4 text-lg font-semibold">verifica, restringe y explica</p></div></div>;
 }
