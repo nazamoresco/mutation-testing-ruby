@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection' | 'sources';
+type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
 
 type Slide = {
   index: string;
@@ -117,20 +117,35 @@ const slides: Slide[] = [
     claims: ['Seguridad no requiere más tests en abstracto: requiere tests que fallen cuando una defensa se debilita.', 'Un buen rollout es selectivo, medible y revisable.'],
   },
   {
-    index: '11', section: 'Reflexión', minutes: 2, visual: 'reflection',
+    index: '11', section: 'Reflexión', minutes: 3, visual: 'reflection',
     title: 'Si la IA escribe más código, la escasez no será escribir',
     copy: 'El lugar interesante puede estar un nivel más arriba: herramientas que verifican, restringen y explican código generado. Mutation testing, complejidad, análisis estático y contraejemplos convierten velocidad en confianza calibrada.',
     annotation: 'Menos automatización que produce código sin verificar. Más metacódigo que nos ayuda a decidir si ese código merece confianza.',
     presenter: ['Volvé a la pregunta inicial: vale la pena cuando la decisión importa más que el coste de comprobarla.', 'Terminá invitando al público a nombrar una herramienta de verificación que les falta hoy.'],
     claims: ['La generación de código eleva el valor de la verificación.', 'La siguiente capa interesante de herramientas puede ser la que prueba el output de la anterior.'],
   },
+];
+
+const sources = [
   {
-    index: '12', section: 'Fuentes', minutes: 1, visual: 'sources',
-    title: 'Fuentes para seguir la conversación',
-    copy: 'La explicación técnica de Mutant viene de su documentación oficial. Los papers y el corpus de apps reales nos sirven para poner esa herramienta en contexto y no convertir una demo en una conclusión universal.',
-    annotation: 'Las fuentes también dejan claro qué afirmamos sobre la herramienta y qué estamos investigando todavía.',
-    presenter: ['Agradecé a Mutant por la claridad de su nomenclatura: la charla adapta sus ideas, no las presenta como descubrimientos propios.', 'Indicá que Real World Rails y los papers quedan disponibles en la versión web para seguir profundizando.'],
-    claims: ['La evidencia sobre la herramienta y la evidencia sobre su efecto en proyectos reales no son la misma cosa.', 'Una buena fuente no elimina el juicio: permite discutirlo mejor.'],
+    category: 'Mutant: conceptos y uso',
+    description: 'La documentación primaria para profundizar en el vocabulario y el flujo de la herramienta.',
+    links: [
+      ['Mutant — README', 'Punto de partida: concepto, instalación y filosofía.', 'https://github.com/mbj/mutant'],
+      ['Nomenclature', 'Subject, mutation operator, mutation, kill y otros términos de la charla.', 'https://github.com/mbj/mutant/blob/main/docs/nomenclature.md'],
+      ['Rails Integration', 'Discovery, eager loading e isolation en aplicaciones Rails.', 'https://github.com/mbj/mutant/blob/main/docs/rails.md'],
+      ['Incremental mode', 'Qué selecciona `--since` y qué deja afuera.', 'https://github.com/mbj/mutant/blob/main/docs/incremental.md'],
+      ['Reading reports', 'Cómo leer y priorizar los resultados de una corrida.', 'https://github.com/mbj/mutant/blob/main/docs/reading-reports.md'],
+    ],
+  },
+  {
+    category: 'Evidencia y corpus',
+    description: 'Referencias para discutir el valor y los límites de mutation testing más allá de una demo.',
+    links: [
+      ['Real World Rails', 'Corpus de checkouts de aplicaciones Rails para el piloto de la charla.', 'https://github.com/eliotsykes/real-world-rails'],
+      ['Just et al. — real faults', 'Trabajo sobre la relación entre mutantes y fallas reales.', 'https://homes.cs.washington.edu/~rjust/publ/mutants_real_faults_tr_2014.pdf'],
+      ['Google Research — long-term effects', 'Estudio sobre efectos a largo plazo de mutation testing en desarrollo.', 'https://research.google/pubs/long-term-effects-of-mutation-testing/'],
+    ],
   },
 ];
 
@@ -140,7 +155,7 @@ const formatElapsed = (minutes: number) => `${Math.floor(minutes)}:${minutes % 1
 const rubyToken = /(#.*$|'[^']*'|"[^"\n]*"|\b(?:def|end|class|module|if|else|elsif|unless|do|case|when|return)\b|\b(?:true|false|nil)\b|:\w+|\b\d+\b|\b[a-z_]\w*[!?]?(?=\())/gm;
 
 function RubyCode({ code }: { code: string }) {
-  return code.split(rubyToken).map((token, index) => {
+  return code.replace(/^\+/gm, '').split(rubyToken).map((token, index) => {
     if (!token) return null;
     let color = 'text-[#42191f]';
     if (token.startsWith('#')) color = 'text-[#9a7073] italic';
@@ -178,51 +193,45 @@ function Diagram({ visual, coverageMode, setCoverageMode }: { visual: Visual; co
 
   if (visual === 'adoption') return <div className={card}><p className={label}>Filtro de adopción</p><div className="mt-5 grid gap-2 sm:grid-cols-3">{[['Criticidad', '¿fallar cuesta?'], ['Estabilidad', '¿la suite es confiable?'], ['Foco', '¿podemos acotar?']].map(([title, copy]) => <div className="border border-[#6c2330]/15 p-3" key={title}><p className="font-semibold text-[#42191f]">{title}</p><p className="mt-2 text-xs text-[#75555a]">{copy}</p></div>)}</div><div className="mt-4 border-l-2 border-[#9c1f31] pl-3 text-sm font-semibold text-[#42191f]">Las tres en verde → buen primer candidato</div></div>;
 
-  if (visual === 'sources') return <div className={card}><p className={label}>Documentación y evidencia</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{[
-    ['Mutant — README', 'https://github.com/mbj/mutant'],
-    ['Nomenclature', 'https://github.com/mbj/mutant/blob/main/docs/nomenclature.md'],
-    ['Rails Integration', 'https://github.com/mbj/mutant/blob/main/docs/rails.md'],
-    ['Incremental mode', 'https://github.com/mbj/mutant/blob/main/docs/incremental.md'],
-    ['Reading reports', 'https://github.com/mbj/mutant/blob/main/docs/reading-reports.md'],
-    ['Real World Rails', 'https://github.com/eliotsykes/real-world-rails'],
-    ['Just et al. — real faults', 'https://homes.cs.washington.edu/~rjust/publ/mutants_real_faults_tr_2014.pdf'],
-    ['Google Research — long-term effects', 'https://research.google/pubs/long-term-effects-of-mutation-testing/'],
-  ].map(([title, href]) => <a className="group flex items-center justify-between border border-[#6c2330]/15 px-3 py-2 text-sm font-medium text-[#42191f] transition hover:border-[#9c1f31] hover:bg-[#fff5f4]" href={href} key={href} rel="noreferrer" target="_blank"><span>{title}</span><ExternalLink className="size-3 text-[#9c1f31]" /></a>)}</div></div>;
-
   return <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr]"><div className={card}><p className={label}>IA</p><p className="mt-4 text-lg font-semibold">produce código y tests</p></div><div className="self-center text-2xl text-[#9c1f31]">↑</div><div className="border border-[#9c1f31] bg-[#fff5f4] p-4"><p className={label}>Metacódigo</p><p className="mt-4 text-lg font-semibold">verifica, restringe y explica</p></div></div>;
+}
+
+function SourcesLibrary() {
+  return <div className="mx-auto max-w-5xl"><div className="max-w-3xl"><p className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]">Biblioteca de lectura</p><h1 className="mt-4 text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl">Fuentes para continuar después de la charla</h1><p className="mt-6 text-xl leading-relaxed text-[#75555a]">Acá quedan las referencias sin el límite de una diapositiva: qué documenta la herramienta, qué evidencia estamos usando y qué conviene leer antes de sacar conclusiones generales.</p></div><div className="mt-12 space-y-10">{sources.map((group) => <section key={group.category}><div className="border-b border-[#6c2330]/15 pb-4"><p className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]">{group.category}</p><p className="mt-2 text-sm leading-relaxed text-[#75555a]">{group.description}</p></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{group.links.map(([title, description, href]) => <a className="group border border-[#6c2330]/15 bg-[#fffdfb] p-5 shadow-[0_10px_30px_rgba(91,30,42,.05)] transition hover:border-[#9c1f31] hover:bg-[#fff5f4]" href={href} key={href} rel="noreferrer" target="_blank"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold text-[#42191f]">{title}</h2><ExternalLink className="mt-0.5 size-4 shrink-0 text-[#9c1f31]" /></div><p className="mt-3 text-sm leading-relaxed text-[#75555a]">{description}</p></a>)}</div></section>)}</div><p className="mt-12 border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">Esta biblioteca separa documentación primaria, corpus y evidencia empírica. No reemplaza el contexto de cada proyecto: lo hace discutible.</p></div>;
 }
 
 export default function Home() {
   const [active, setActive] = useState(0);
   const [presenterMode, setPresenterMode] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const [coverageMode, setCoverageMode] = useState<'line' | 'semantic'>('line');
   const current = slides[active];
   const minutesBefore = slides.slice(0, active).reduce((total, slide) => total + slide.minutes, 0);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight') setActive((value) => Math.min(value + 1, slides.length - 1));
-      if (event.key === 'ArrowLeft') setActive((value) => Math.max(value - 1, 0));
-      if (event.key.toLowerCase() === 'p') setPresenterMode((value) => !value);
+      if (!sourcesOpen && event.key === 'ArrowRight') setActive((value) => Math.min(value + 1, slides.length - 1));
+      if (!sourcesOpen && event.key === 'ArrowLeft') setActive((value) => Math.max(value - 1, 0));
+      if (!sourcesOpen && event.key.toLowerCase() === 'p') setPresenterMode((value) => !value);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [sourcesOpen]);
 
   const go = (direction: -1 | 1) => setActive((value) => Math.max(0, Math.min(slides.length - 1, value + direction)));
 
   return <main className="min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
     <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
       <div className="flex items-center gap-3"><span className="grid size-8 place-items-center bg-[#9c1f31] text-xs font-bold text-[#fffaf6]">M</span><div><p className="text-sm font-semibold tracking-tight">Mutation Testing en Ruby</p><p className="text-[10px] uppercase tracking-[.15em] text-[#75555a]">¿vale la pena?</p></div></div>
-      <div className="flex items-center gap-2"><Button variant={!presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => setPresenterMode(false)}>Charla</Button><Button variant={presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => setPresenterMode(true)}><MonitorUp /> Presentador</Button></div>
+      <div className="flex items-center gap-2"><Button variant={!sourcesOpen && !presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => { setSourcesOpen(false); setPresenterMode(false); }}>Charla</Button><Button variant={!sourcesOpen && presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => { setSourcesOpen(false); setPresenterMode(true); }}><MonitorUp /> Presentador</Button><Button variant={sourcesOpen ? 'secondary' : 'ghost'} size="sm" onClick={() => setSourcesOpen(true)}>Fuentes</Button></div>
     </header>
 
     <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)]">
-      <nav className="border-b border-[#6c2330]/15 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Recorrido</p><div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">{slides.map((slide, index) => <button key={slide.index} onClick={() => setActive(index)} className={`flex items-center gap-3 px-2 py-2 text-left transition ${index === active ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#75555a] hover:bg-[#f4e3df] hover:text-[#42191f]'}`}><span className="font-mono text-xs">{slide.index}</span><span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span></button>)}</div><p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]"><span className="block font-mono text-[#9c1f31]">35 min</span>de contenido + 5 min de preguntas</p></nav>
+      <nav className="border-b border-[#6c2330]/15 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Recorrido</p><div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">{slides.map((slide, index) => <button key={slide.index} onClick={() => { setSourcesOpen(false); setActive(index); }} className={`flex items-center gap-3 px-2 py-2 text-left transition ${!sourcesOpen && index === active ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#75555a] hover:bg-[#f4e3df] hover:text-[#42191f]'}`}><span className="font-mono text-xs">{slide.index}</span><span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span></button>)}</div><button onClick={() => setSourcesOpen(true)} className={`mt-4 flex w-full items-center gap-3 border-t border-[#6c2330]/15 px-2 pt-4 text-left text-sm font-medium transition ${sourcesOpen ? 'text-[#9c1f31]' : 'text-[#75555a] hover:text-[#42191f]'}`}><ExternalLink className="size-3" /> Fuentes y lecturas</button><p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]"><span className="block font-mono text-[#9c1f31]">35 min</span>de contenido + 5 min de preguntas</p></nav>
 
-      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-5xl"><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
+      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-5xl">{sourcesOpen ? <SourcesLibrary /> : <><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
         {!presenterMode ? <div className="grid gap-10 lg:grid-cols-[1.03fr_.97fr] lg:items-center"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
-        <footer className="mt-12 flex items-center justify-between border-t border-[#6c2330]/15 pt-5"><Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button><div className="hidden items-center gap-2 text-xs text-[#75555a] sm:flex"><CircleDot className="size-3 text-[#9c1f31]" /> Flechas para navegar · P para presentador</div><Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button></footer>
+        <footer className="mt-12 flex items-center justify-between border-t border-[#6c2330]/15 pt-5"><Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button><div className="hidden items-center gap-2 text-xs text-[#75555a] sm:flex"><CircleDot className="size-3 text-[#9c1f31]" /> Flechas para navegar · P para presentador</div><Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button></footer></>}
       </div></section>
     </div>
   </main>;
