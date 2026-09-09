@@ -6,7 +6,7 @@ Este documento permite continuar la investigación sin depender del historial de
 
 En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y cuál es su coste técnico y de revisión? La meta no es maximizar un mutation score ni afirmar que todo mutante vivo es un bug; es producir datos trazables para una charla: adopción existente, viabilidad, coste, clases de decisiones y bugs confirmados.
 
-## Estado al 2026-09-08
+## Estado al 2026-09-09
 
 - Repositorio de trabajo: `nazamoresco/mutation-testing-ruby`.
 - La charla web y el material editorial están en `main`.
@@ -14,7 +14,8 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - Se clonó el índice de Real World Rails en un checkout local separado; su `.gitmodules` enumera **214** checkouts. El índice no contiene los apps completos: son submódulos de repositorios externos.
 - El inventario estático quedó actualizado en la rama `research/real-world-rails-pilot` (commit `39616d7`): 214 filas, 199 repositorios/rama legibles y 15 accesos no disponibles. El detalle, los límites y los candidatos están en `research/INVENTORY.md`.
 - `trailmix` fue seleccionado tras un baseline Docker reproducible: dos corridas de RSpec verdes (94 ejemplos, 0 fallas), sin flakiness observada. El detalle, el SHA y el límite de compatibilidad nativa macOS/OpenSSL están en `research/baselines/trailmix-2026-09-08.md`.
-- Aún no se ejecutó Mutant: no reportar números de mutantes o bugs hasta completar las fases siguientes.
+- El piloto acotado de Mutant ya corrió sobre tres sujetos de `trailmix`, en un checkout temporal con configuración local y reversible. Hubo 37 mutaciones, 36 killed, 1 alive y 0 timeouts. El detalle reproducible está en `research/mutant-runs/trailmix-2026-09-08.md`; la única fila viva provisional está en `research/mutants.csv`.
+- No hay bugs confirmados. El mutante vivo es una propuesta provisional de `equivalent` y requiere revisión humana antes de aceptar una simplificación o proponer un test.
 
 ## Material existente
 
@@ -123,4 +124,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Revisá el baseline de `trailmix` en `research/baselines/trailmix-2026-09-08.md` y configurá Mutant de forma reversible en el mismo entorno Docker. Elegí uno a tres sujetos pequeños, ejecutalos con selectores explícitos y registrá comando, versión, duración y reporte crudo. No mutar toda la app, no abrir PRs y no modificar repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Revisá `research/mutant-runs/trailmix-2026-09-08.md` y clasificá humanamente la única fila provisional de `research/mutants.csv`. Si se amplía la muestra, elegí un sujeto pequeño adicional y repetí el entorno Docker sin modificar ni publicar cambios en repositorios de terceros.
