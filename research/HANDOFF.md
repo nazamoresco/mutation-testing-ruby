@@ -14,8 +14,8 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - Se clonó el índice de Real World Rails en un checkout local separado; su `.gitmodules` enumera **214** checkouts. El índice no contiene los apps completos: son submódulos de repositorios externos.
 - El inventario estático quedó actualizado en la rama `research/real-world-rails-pilot` (commit `39616d7`): 214 filas, 199 repositorios/rama legibles y 15 accesos no disponibles. El detalle, los límites y los candidatos están en `research/INVENTORY.md`.
 - `trailmix` fue seleccionado tras un baseline Docker reproducible: dos corridas de RSpec verdes (94 ejemplos, 0 fallas), sin flakiness observada. El detalle, el SHA y el límite de compatibilidad nativa macOS/OpenSSL están en `research/baselines/trailmix-2026-09-08.md`.
-- El piloto acotado de Mutant ya corrió sobre tres sujetos de `trailmix`, en un checkout temporal con configuración local y reversible. Hubo 37 mutaciones, 36 killed, 1 alive y 0 timeouts. El detalle reproducible está en `research/mutant-runs/trailmix-2026-09-08.md`; la única fila viva provisional está en `research/mutants.csv`.
-- No hay bugs confirmados. El mutante vivo es una propuesta provisional de `equivalent` y requiere revisión humana antes de aceptar una simplificación o proponer un test.
+- El piloto acotado de Mutant ya corrió sobre tres sujetos de `trailmix`, en un checkout temporal con configuración local y reversible. Hubo 37 mutaciones, 36 killed, 1 alive y 0 timeouts. El detalle reproducible está en `research/mutant-runs/trailmix-2026-09-08.md`; la única fila viva está registrada y revisada en `research/mutants.csv`.
+- No hay bugs confirmados. El mutante vivo `Time.zone.now` a `Time.now` en `Entry#for_today?` fue aceptado como `equivalent`: ambas expresiones terminan proyectando el mismo instante a la zona del usuario; la diferencia teórica de cruce de medianoche entre dos lecturas no se considera un contrato de dominio independiente.
 
 ## Material existente
 
@@ -124,4 +124,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Revisá `research/mutant-runs/trailmix-2026-09-08.md` y clasificá humanamente la única fila provisional de `research/mutants.csv`. Si se amplía la muestra, elegí un sujeto pequeño adicional y repetí el entorno Docker sin modificar ni publicar cambios en repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. El primer piloto de Trailmix ya está cerrado: 37 mutaciones, 36 killed y una alive aceptada como equivalente, sin bugs confirmados. Decidí si se amplía la muestra con otro sujeto pequeño y repetí el entorno Docker sin modificar ni publicar cambios en repositorios de terceros.
