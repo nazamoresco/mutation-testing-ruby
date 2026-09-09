@@ -16,7 +16,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `trailmix` fue seleccionado tras un baseline Docker reproducible: dos corridas de RSpec verdes (94 ejemplos, 0 fallas), sin flakiness observada. El detalle, el SHA y el límite de compatibilidad nativa macOS/OpenSSL están en `research/baselines/trailmix-2026-09-08.md`.
 - El piloto acotado de Mutant ya corrió sobre tres sujetos de `trailmix`, en un checkout temporal con configuración local y reversible. Hubo 37 mutaciones, 36 killed, 1 alive y 0 timeouts. El detalle reproducible está en `research/mutant-runs/trailmix-2026-09-08.md`; la única fila viva está registrada y revisada en `research/mutants.csv`.
 - No hay bugs confirmados. El mutante vivo `Time.zone.now` a `Time.now` en `Entry#for_today?` fue aceptado como `equivalent`: ambas expresiones terminan proyectando el mismo instante a la zona del usuario; la diferencia teórica de cruce de medianoche entre dos lecturas no se considera un contrato de dominio independiente.
-- Se lanzó una corrida completa de Mutant sobre `trailmix` el 2026-09-09, sin selector de sujetos y con límite global de cuatro horas. Está en curso en un contenedor Docker aislado; su estado y protocolo de cierre están en `research/mutant-runs/trailmix-full-2026-09-09.md`.
+- La corrida completa de Mutant sobre `trailmix` está en curso desde 2026-09-09T15:36:39Z, con límite global de cuatro horas y un matcher local por rutas que descubre 111 sujetos de `app/` y `lib/`. Un primer lanzamiento sin matcher devolvió 0 sujetos y fue invalidado; el runner de Mutant validó luego las 94 pruebas con 0 fallas. El estado y protocolo de cierre están en `research/mutant-runs/trailmix-full-2026-09-09.md`.
 
 ## Material existente
 
