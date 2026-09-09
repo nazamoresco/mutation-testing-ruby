@@ -16,7 +16,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `trailmix` fue seleccionado tras un baseline Docker reproducible: dos corridas de RSpec verdes (94 ejemplos, 0 fallas), sin flakiness observada. El detalle, el SHA y el límite de compatibilidad nativa macOS/OpenSSL están en `research/baselines/trailmix-2026-09-08.md`.
 - El piloto acotado de Mutant ya corrió sobre tres sujetos de `trailmix`, en un checkout temporal con configuración local y reversible. Hubo 37 mutaciones, 36 killed, 1 alive y 0 timeouts. El detalle reproducible está en `research/mutant-runs/trailmix-2026-09-08.md`; la única fila viva está registrada y revisada en `research/mutants.csv`.
 - No hay bugs confirmados. El mutante vivo `Time.zone.now` a `Time.now` en `Entry#for_today?` fue aceptado como `equivalent`: ambas expresiones terminan proyectando el mismo instante a la zona del usuario; la diferencia teórica de cruce de medianoche entre dos lecturas no se considera un contrato de dominio independiente.
-- La corrida completa de Mutant sobre `trailmix` está en curso desde 2026-09-09T15:36:39Z, con límite global de cuatro horas y un matcher local por rutas que descubre 111 sujetos de `app/` y `lib/`. Un primer lanzamiento sin matcher devolvió 0 sujetos y fue invalidado; el runner de Mutant validó luego las 94 pruebas con 0 fallas. El estado y protocolo de cierre están en `research/mutant-runs/trailmix-full-2026-09-09.md`.
+- La corrida completa de Mutant sobre `trailmix` terminó el 2026-09-09: 111 sujetos, 3.098 mutaciones, 1.218 killed, 1.880 alive y 0 timeouts; Mutant tardó 561,28 s. El primer lanzamiento sin matcher devolvió 0 sujetos y fue invalidado; el runner de Mutant validó luego las 94 pruebas con 0 fallas. El informe completo está en `research/mutant-runs/trailmix-full-2026-09-09.md` y las 1.880 filas vivas sin clasificar están en `research/mutants.csv`.
 
 ## Material existente
 
@@ -125,4 +125,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. El primer piloto de Trailmix ya está cerrado: 37 mutaciones, 36 killed y una alive aceptada como equivalente, sin bugs confirmados. Decidí si se amplía la muestra con otro sujeto pequeño y repetí el entorno Docker sin modificar ni publicar cambios en repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. La corrida completa de Trailmix ya terminó y dejó 1.880 mutantes vivos sin clasificar en `research/mutants.csv`. Empezá el triage por los 37 sujetos sin pruebas seleccionadas, agrupá patrones antes de revisar diffs individuales y no conviertas ningún mutante vivo en bug confirmado sin evidencia revisable. No modificar ni publicar cambios en repositorios de terceros.
