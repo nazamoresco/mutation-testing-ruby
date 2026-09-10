@@ -2,7 +2,19 @@
 
 ## Objetivo
 
-Obtener evidencia práctica para la charla y una base reutilizable de datos: adopción actual de mutation testing, coste de puesta en marcha y clasificación de mutantes vivos en aplicaciones Rails reales.
+Obtener evidencia práctica para la charla y una base reutilizable de datos: adopción actual de mutation testing, coste de puesta en marcha, tipos de mutación emitidos y clasificación de mutantes vivos en aplicaciones Rails reales. No es una campaña para corregir aplicaciones ajenas ni para maximizar mutation coverage.
+
+## Datos comparables
+
+- `apps.csv`: inventario estático del corpus y candidatos.
+- `mutation-runs.csv`: una fila por corrida válida o invalidada, con alcance,
+  coste y resultados agregados.
+- `mutation-operator-summary.csv`: distribución de tipos de mutación por
+  corrida y resultado.
+- `mutants.csv`: cola de resultados vivos o no concluyentes y su revisión
+  humana; no es un contador de bugs.
+- `MULTI-APP-ANALYSIS-PLAN.md`: protocolo para extender el estudio a una
+  cohorte de aplicaciones comparables.
 
 ## Corpus
 

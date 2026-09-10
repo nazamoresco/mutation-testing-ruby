@@ -1,0 +1,3 @@
+run_date,session_id,app_id,revision,scope,validity,operator_profile,subjects,tests_preflight,killed,alive,timeouts,mutations,runtime_seconds,killtime_seconds,source_report
+2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmix,3565d61e451a39c76ec952acf7e9196c810c5ea6,whole_application,valid,light,111,94,1218,1880,0,3098,561.28,391.21,research/mutant-runs/trailmix-full-2026-09-09.md
+2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,3565d61e451a39c76ec952acf7e9196c810c5ea6,focused_validation,valid,light,1,99,12,0,0,12,2.62,1.68,research/mutant-runs/trailmix-subscription-paid-2026-09-10.md
