@@ -21,7 +21,7 @@ La corrida completa produjo 3.098 mutaciones en 111 sujetos: 1.218 killed, 1.880
 | --- | --- | ---: | ---: | ---: | --- |
 | A | Controladores | 45 | 1.541 | 24 / 1.309 vivos | Agrupar checkout, Stripe/webhooks y CRUD. Identificar por sujeto si falta test, depende de integración externa o está fuera de alcance. |
 | B | Modelos, workers y uploaders | 54 | 320 | 13 / 238 vivos | Separar lógica de dominio testeable de infraestructura de correo, archivos y jobs. Proponer los tres mejores candidatos para test focalizado. |
-| C | Sujetos con tests seleccionados | 74 | 333 | 0 | Detectar patrones repetidos de mutantes vivos y elegir diffs representativos. Buscar equivalentes plausibles y tests poco específicos. |
+| C | Sujetos con tests seleccionados y mutantes vivos | 46 | 333 | 0 | Detectar patrones repetidos de mutantes vivos y elegir diffs representativos. Buscar equivalentes plausibles y tests poco específicos. |
 | D | Integración y revisión | — | — | — | Consolidar los informes A–C, deduplicar patrones y preparar una lista de decisiones para aprobación humana. Solo este rol actualiza la clasificación final. |
 
 Los totales de los lotes A–C se solapan en la vista de superficie y de cobertura; la cola de trabajo canónica sigue siendo `research/mutants.csv`.
