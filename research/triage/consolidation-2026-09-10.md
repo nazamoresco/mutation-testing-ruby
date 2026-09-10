@@ -26,15 +26,23 @@ como `possible_real_bug`.
 | 4 | Revisar selección de Mutant antes de duplicar features | Exports, Settings y EmailProcessor tienen coverage útil que Mutant no seleccionó | Inspección acotada de mapeo y reejecución de uno de esos sujetos | Bajo |
 | 5 | Acordar alcance de uploaders y workers de correo | Son infraestructura y suman 85 vivos sin tests seleccionados | Ninguna ejecución hasta tener requisito de formatos, visibilidad y envío | Bajo |
 
+## Resultado de la decisión 1
+
+La tabla de `Subscription#paid?` fue aprobada y validada localmente el mismo
+día. La spec temporal cubrió `active`, `trialing`, `past_due`, `canceled` y
+estado ausente; RSpec pasó 5 ejemplos y la repetición de Mutant mató 12 de 12
+mutaciones del sujeto, sin timeouts. Los 11 vivos de la sesión completa se
+registran como `missing_test` revisados, sin afirmar un bug de producción.
+El detalle y los límites están en
+`research/mutant-runs/trailmix-subscription-paid-2026-09-10.md`.
+
 ## Secuencia recomendada
 
-1. Aprobar la tabla de `Subscription#paid?` y validarla con una prueba local
-   temporal: es la señal más limpia para comprobar el flujo de trabajo.
-2. Aclarar por escrito la fuente de verdad e idempotencia de Stripe antes de
+1. Aclarar por escrito la fuente de verdad e idempotencia de Stripe antes de
    escribir cualquier test de webhook o checkout.
-3. Comprobar el mapeo de selección de un sujeto con feature existente
+2. Comprobar el mapeo de selección de un sujeto con feature existente
    (`ExportsController#new` es el candidato más representativo).
-4. Reejecutar sólo los sujetos afectados después de cada decisión y actualizar
+3. Reejecutar sólo los sujetos afectados después de cada decisión y actualizar
    filas individuales; no repetir la corrida completa.
 
 ## Salvaguardas

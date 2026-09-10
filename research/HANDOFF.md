@@ -18,7 +18,8 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - No hay bugs confirmados. El mutante vivo `Time.zone.now` a `Time.now` en `Entry#for_today?` fue aceptado como `equivalent`: ambas expresiones terminan proyectando el mismo instante a la zona del usuario; la diferencia teórica de cruce de medianoche entre dos lecturas no se considera un contrato de dominio independiente.
 - La corrida completa de Mutant sobre `trailmix` terminó el 2026-09-09: 111 sujetos, 3.098 mutaciones, 1.218 killed, 1.880 alive y 0 timeouts; Mutant tardó 561,28 s. El primer lanzamiento sin matcher devolvió 0 sujetos y fue invalidado; el runner de Mutant validó luego las 94 pruebas con 0 fallas. El informe completo está en `research/mutant-runs/trailmix-full-2026-09-09.md` y las 1.880 filas vivas sin clasificar están en `research/mutants.csv`.
 - La primera pasada de triage repartió manifiestos compactos entre tres agentes: los 37 sujetos sin tests seleccionados (1.547 vivos) y 46 sujetos con tests seleccionados pero vivos (333; vista solapada) fueron agrupados por patrón. Los informes y la consolidación están en `research/triage/`. La lectura común es cobertura ausente, selección incompleta y límites externos sin especificar; no hay bugs confirmados ni clasificaciones individuales nuevas.
-- La siguiente decisión humana propuesta es aprobar una tabla de estados para `Subscription#paid?`; después, definir el contrato de idempotencia de Stripe antes de tests de webhook/checkout. Las validaciones posteriores deben ser locales, temporales y por sujeto, nunca otra corrida completa por defecto.
+- La primera decisión aprobada, una tabla de estados para `Subscription#paid?`, se validó local y temporalmente: 5 ejemplos RSpec verdes y 12 de 12 mutaciones killed en 2,62 s, sin timeouts. Los 11 vivos de la sesión completa quedan revisados como `missing_test`; no hay bug confirmado ni cambio publicado en Trailmix. El detalle está en `research/mutant-runs/trailmix-subscription-paid-2026-09-10.md`.
+- La siguiente decisión humana propuesta es definir el contrato de idempotencia de Stripe antes de tests de webhook/checkout. Las validaciones posteriores deben ser locales, temporales y por sujeto, nunca otra corrida completa por defecto.
 
 ## Material existente
 
@@ -30,6 +31,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `research/mutants.csv`: una fila por mutante vivo o resultado no concluyente.
 - `research/TRIAGE-PLAN.md`: lotes, contrato de salida y orquestación para revisar la corrida completa sin cargar el reporte entero en un solo contexto.
 - `research/triage/consolidation-2026-09-10.md`: cobertura de la primera pasada, decisiones propuestas y orden de validación.
+- `research/mutant-runs/trailmix-subscription-paid-2026-09-10.md`: validación temporal de la primera decisión de triage.
 - `plans/2026-08-31-research-and-talk.md`: ramas y próximos cortes útiles.
 
 ## Fuentes a conservar
@@ -129,4 +131,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Tomá `research/triage/consolidation-2026-09-10.md` como corte de la primera pasada. Si se aprueba una decisión, prepará un test local y temporal para un solo sujeto, ejecutá RSpec y Mutant sólo sobre ese sujeto y actualizá su evidencia. No conviertas ningún mutante vivo en bug confirmado sin evidencia revisable y no modifiques ni publiques cambios en repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Tomá `research/triage/consolidation-2026-09-10.md` y la validación de `Subscription#paid?` como corte actual. Antes de tests de webhook/checkout, pedí una decisión explícita sobre la fuente de verdad e idempotencia de Stripe. Si se aprueba una decisión, prepará un test local y temporal para un solo sujeto, ejecutá RSpec y Mutant sólo sobre ese sujeto y actualizá su evidencia. No conviertas ningún mutante vivo en bug confirmado sin evidencia revisable y no modifiques ni publiques cambios en repositorios de terceros.
