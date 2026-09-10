@@ -26,6 +26,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `research/INVENTORY.md`: corte del inventario, accesos no disponibles, candidatos y próximo paso.
 - `research/claims.csv`: afirmaciones y evidencia requerida.
 - `research/mutants.csv`: una fila por mutante vivo o resultado no concluyente.
+- `research/TRIAGE-PLAN.md`: lotes, contrato de salida y orquestación para revisar la corrida completa sin cargar el reporte entero en un solo contexto.
 - `plans/2026-08-31-research-and-talk.md`: ramas y próximos cortes útiles.
 
 ## Fuentes a conservar
@@ -125,4 +126,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. La corrida completa de Trailmix ya terminó y dejó 1.880 mutantes vivos sin clasificar en `research/mutants.csv`. Empezá el triage por los 37 sujetos sin pruebas seleccionadas, agrupá patrones antes de revisar diffs individuales y no conviertas ningún mutante vivo en bug confirmado sin evidencia revisable. No modificar ni publicar cambios en repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Seguí `research/TRIAGE-PLAN.md`: repartí el triage de los 1.880 mutantes vivos por lotes de superficie, trabajá con manifiestos compactos y consolidá hipótesis antes de revisar diffs individuales. No conviertas ningún mutante vivo en bug confirmado sin evidencia revisable y no modifiques ni publiques cambios en repositorios de terceros.
