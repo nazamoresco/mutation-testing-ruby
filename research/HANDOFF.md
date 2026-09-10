@@ -22,6 +22,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - El alcance se redefinió: no se mejoran las aplicaciones de terceros. Se mide el valor, coste y viabilidad de Mutant en una cohorte comparativa. El protocolo está en `research/MULTI-APP-ANALYSIS-PLAN.md` y los datos distinguen `analysis_level=project` de futuros agregados `analysis_level=global` con `cohort_id`.
 - La cohorte inicial aprobada `rwr-historical-8` cubre Rails 4 a 8.1 y RSpec/Minitest. Tras el baseline de ShinyCMS-ruby, el registro contiene nueve entradas: ShinyCMS-ruby queda visible como `baseline_failed` y `klaxon` es su reemplazo Rails 8.1 RSpec. El objetivo sigue siendo ocho corridas comparables válidas, no ocho instalaciones exitosas.
 - ShinyCMS-ruby alcanzó 687 ejemplos en 3 min 8 s tras la preparación documentada de gems, JavaScript/MJML y Node/npm, pero falló una aserción de i18n por 84 claves faltantes. No se modifica el proyecto ni se ejecuta Mutant. El detalle está en `research/baselines/shinycms-ruby-2026-09-10.md`.
+- Speakerline pasó dos baselines (66 ejemplos, 0 fallas) y la corrida completa de Mutant con el perfil `light`: 39 sujetos, 1.206 mutaciones, 612 killed, 594 alive y 0 timeouts en 365,61 s. Los 594 vivos quedan `unreviewed`, no son bugs. Nueve sujetos sin tests seleccionados explican 237 vivos. El detalle está en `research/mutant-runs/speakerline-full-2026-09-10.md`.
 
 ## Material existente
 
@@ -37,6 +38,8 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `research/MULTI-APP-ANALYSIS-PLAN.md`: protocolo de la cohorte comparativa y reglas de agregación.
 - `research/cohort-apps.csv`: composición, SHA y estado de cada entrada de la cohorte.
 - `research/baselines/shinycms-ruby-2026-09-10.md`: primer resultado de viabilidad fallida de la cohorte.
+- `research/baselines/speakerline-2026-09-10.md`: baseline verde de Speakerline.
+- `research/mutant-runs/speakerline-full-2026-09-10.md`: primera corrida completa válida después de Trailmix.
 - `plans/2026-08-31-research-and-talk.md`: ramas y próximos cortes útiles.
 
 ## Fuentes a conservar

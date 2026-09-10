@@ -12,7 +12,8 @@ Obtener evidencia práctica para la charla y una base reutilizable de datos: ado
 - `mutation-operator-summary.csv`: distribución de tipos de mutación por
   corrida y resultado.
 - `mutants.csv`: cola de resultados vivos o no concluyentes y su revisión
-  humana; no es un contador de bugs.
+  humana; usa `analysis_level` y `cohort_id` para mantener cada mutante ligado
+  a su app. No es un contador de bugs.
 - `MULTI-APP-ANALYSIS-PLAN.md`: protocolo para extender el estudio a una
   cohorte de aplicaciones comparables.
 

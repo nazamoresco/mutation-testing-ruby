@@ -3,3 +3,5 @@ project,rwr-historical-8,2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmi
 project,rwr-historical-8,2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmix,whole_application,light,neutral,111,111,0,0,Neutral mutations are reported separately and are not evidence of test strength
 project,rwr-historical-8,2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,evil,11,11,0,0,Temporary approved specification; not comparable with the whole-application cohort
 project,rwr-historical-8,2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,neutral,1,1,0,0,Temporary approved specification; not comparable with the whole-application cohort
+project,rwr-historical-8,2026-09-10,01a08bcb-9aef-7213-aaa5-6419bafaaf01,speakerline,whole_application,light,evil,1167,573,594,0,Same Mutant profile as Trailmix; alive rows are unreviewed and not bugs
+project,rwr-historical-8,2026-09-10,01a08bcb-9aef-7213-aaa5-6419bafaaf01,speakerline,whole_application,light,neutral,39,39,0,0,Neutral result reported separately from semantic mutation signal
