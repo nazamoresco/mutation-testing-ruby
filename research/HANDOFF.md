@@ -6,7 +6,7 @@ Este documento permite continuar la investigación sin depender del historial de
 
 En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y cuál es su coste técnico y de revisión? La meta no es maximizar un mutation score ni afirmar que todo mutante vivo es un bug; es producir datos trazables para una charla: adopción existente, viabilidad, coste, clases de decisiones y bugs confirmados.
 
-## Estado al 2026-09-09
+## Estado al 2026-09-10
 
 - Repositorio de trabajo: `nazamoresco/mutation-testing-ruby`.
 - La charla web y el material editorial están en `main`.
@@ -17,6 +17,8 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - El piloto acotado de Mutant ya corrió sobre tres sujetos de `trailmix`, en un checkout temporal con configuración local y reversible. Hubo 37 mutaciones, 36 killed, 1 alive y 0 timeouts. El detalle reproducible está en `research/mutant-runs/trailmix-2026-09-08.md`; la única fila viva está registrada y revisada en `research/mutants.csv`.
 - No hay bugs confirmados. El mutante vivo `Time.zone.now` a `Time.now` en `Entry#for_today?` fue aceptado como `equivalent`: ambas expresiones terminan proyectando el mismo instante a la zona del usuario; la diferencia teórica de cruce de medianoche entre dos lecturas no se considera un contrato de dominio independiente.
 - La corrida completa de Mutant sobre `trailmix` terminó el 2026-09-09: 111 sujetos, 3.098 mutaciones, 1.218 killed, 1.880 alive y 0 timeouts; Mutant tardó 561,28 s. El primer lanzamiento sin matcher devolvió 0 sujetos y fue invalidado; el runner de Mutant validó luego las 94 pruebas con 0 fallas. El informe completo está en `research/mutant-runs/trailmix-full-2026-09-09.md` y las 1.880 filas vivas sin clasificar están en `research/mutants.csv`.
+- La primera pasada de triage repartió manifiestos compactos entre tres agentes: los 37 sujetos sin tests seleccionados (1.547 vivos) y 46 sujetos con tests seleccionados pero vivos (333; vista solapada) fueron agrupados por patrón. Los informes y la consolidación están en `research/triage/`. La lectura común es cobertura ausente, selección incompleta y límites externos sin especificar; no hay bugs confirmados ni clasificaciones individuales nuevas.
+- La siguiente decisión humana propuesta es aprobar una tabla de estados para `Subscription#paid?`; después, definir el contrato de idempotencia de Stripe antes de tests de webhook/checkout. Las validaciones posteriores deben ser locales, temporales y por sujeto, nunca otra corrida completa por defecto.
 
 ## Material existente
 
@@ -27,6 +29,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `research/claims.csv`: afirmaciones y evidencia requerida.
 - `research/mutants.csv`: una fila por mutante vivo o resultado no concluyente.
 - `research/TRIAGE-PLAN.md`: lotes, contrato de salida y orquestación para revisar la corrida completa sin cargar el reporte entero en un solo contexto.
+- `research/triage/consolidation-2026-09-10.md`: cobertura de la primera pasada, decisiones propuestas y orden de validación.
 - `plans/2026-08-31-research-and-talk.md`: ramas y próximos cortes útiles.
 
 ## Fuentes a conservar
@@ -126,4 +129,4 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 ## Primer prompt para la próxima sesión
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Seguí `research/TRIAGE-PLAN.md`: repartí el triage de los 1.880 mutantes vivos por lotes de superficie, trabajá con manifiestos compactos y consolidá hipótesis antes de revisar diffs individuales. No conviertas ningún mutante vivo en bug confirmado sin evidencia revisable y no modifiques ni publiques cambios en repositorios de terceros.
+> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Tomá `research/triage/consolidation-2026-09-10.md` como corte de la primera pasada. Si se aprueba una decisión, prepará un test local y temporal para un solo sujeto, ejecutá RSpec y Mutant sólo sobre ese sujeto y actualizá su evidencia. No conviertas ningún mutante vivo en bug confirmado sin evidencia revisable y no modifiques ni publiques cambios en repositorios de terceros.
