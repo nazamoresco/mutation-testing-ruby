@@ -13,6 +13,9 @@ de mutation testing frente a la información adicional que da sobre una suite?**
 ## Unidad de análisis y alcance
 
 - La unidad primaria es una corrida válida por aplicación y SHA fijado.
+- Cada fila agregada incluye `analysis_level`: `project` para una aplicación y
+  `global` para un agregado cerrado de una cohorte. `cohort_id` evita mezclar
+  resultados de cohortes, versiones o perfiles incompatibles.
 - Cada checkout de terceros es temporal; no se publican commits, PRs ni issues.
 - El resultado principal por app es la corrida completa de los sujetos cargados
   por la configuración válida. Las validaciones focalizadas con tests temporales
@@ -33,6 +36,11 @@ Antes de cada ejecución se fija URL, SHA, Ruby, Bundler, Rails, SO, servicios,
 versión de Mutant, perfil de operadores y número de workers. Una app sólo entra
 en la cohorte comparativa si su suite pasa dos veces y la prevalidación de
 Mutant pasa.
+
+La selección inicial queda registrada en `research/cohort-apps.csv`. Incluye
+una app Rails 4 como sonda de compatibilidad histórica: si no alcanza un
+preflight válido, se conserva en las métricas de viabilidad y se incorpora un
+reemplazo para llegar a ocho corridas comparables.
 
 ## Protocolo por aplicación
 
@@ -77,6 +85,15 @@ se registrará como una cohorte distinta y no se mezclarán sus porcentajes.
 `neutral` se reporta por separado: no es evidencia de que un test detecte una
 diferencia semántica. El análisis de tipos se basará en los tipos emitidos en el
 JSON, no en una etiqueta inferida por un LLM.
+
+## Dos niveles de resultados
+
+Durante la cohorte, `mutation-runs.csv` y
+`mutation-operator-summary.csv` contienen sólo filas `project`. Cuando las
+ocho corridas comparables estén cerradas, se añadirán filas `global` para la
+misma `cohort_id`, calculadas sólo desde esas corridas completas válidas. Las
+filas de `focused_validation` y los bloqueos de setup permanecen visibles, pero
+no entran en el agregado de calidad de la suite.
 
 ## Plan de revisión humana
 

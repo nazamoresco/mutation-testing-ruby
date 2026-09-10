@@ -1,5 +1,5 @@
-run_date,session_id,app_id,scope,operator_profile,mutation_type,generated,killed,alive,timeouts,notes
-2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmix,whole_application,light,evil,2987,1107,1880,0,Only non-neutral mutation type emitted by this profile in this run
-2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmix,whole_application,light,neutral,111,111,0,0,Neutral mutations are reported separately and are not evidence of test strength
-2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,evil,11,11,0,0,Temporary approved specification; not comparable with the whole-application cohort
-2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,neutral,1,1,0,0,Temporary approved specification; not comparable with the whole-application cohort
+analysis_level,cohort_id,run_date,session_id,app_id,scope,operator_profile,mutation_type,generated,killed,alive,timeouts,notes
+project,rwr-historical-8,2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmix,whole_application,light,evil,2987,1107,1880,0,Only non-neutral mutation type emitted by this profile in this run
+project,rwr-historical-8,2026-09-09,01a086d0-7263-722f-add9-d7cc49a3ee18,trailmix,whole_application,light,neutral,111,111,0,0,Neutral mutations are reported separately and are not evidence of test strength
+project,rwr-historical-8,2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,evil,11,11,0,0,Temporary approved specification; not comparable with the whole-application cohort
+project,rwr-historical-8,2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,neutral,1,1,0,0,Temporary approved specification; not comparable with the whole-application cohort
