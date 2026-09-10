@@ -19,7 +19,9 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - La corrida completa de Mutant sobre `trailmix` terminó el 2026-09-09: 111 sujetos, 3.098 mutaciones, 1.218 killed, 1.880 alive y 0 timeouts; Mutant tardó 561,28 s. El primer lanzamiento sin matcher devolvió 0 sujetos y fue invalidado; el runner de Mutant validó luego las 94 pruebas con 0 fallas. El informe completo está en `research/mutant-runs/trailmix-full-2026-09-09.md` y las 1.880 filas vivas sin clasificar están en `research/mutants.csv`.
 - La primera pasada de triage repartió manifiestos compactos entre tres agentes: los 37 sujetos sin tests seleccionados (1.547 vivos) y 46 sujetos con tests seleccionados pero vivos (333; vista solapada) fueron agrupados por patrón. Los informes y la consolidación están en `research/triage/`. La lectura común es cobertura ausente, selección incompleta y límites externos sin especificar; no hay bugs confirmados ni clasificaciones individuales nuevas.
 - La primera decisión aprobada, una tabla de estados para `Subscription#paid?`, se validó local y temporalmente: 5 ejemplos RSpec verdes y 12 de 12 mutaciones killed en 2,62 s, sin timeouts. Los 11 vivos de la sesión completa quedan revisados como `missing_test`; no hay bug confirmado ni cambio publicado en Trailmix. El detalle está en `research/mutant-runs/trailmix-subscription-paid-2026-09-10.md`.
-- La siguiente decisión humana propuesta es definir el contrato de idempotencia de Stripe antes de tests de webhook/checkout. Las validaciones posteriores deben ser locales, temporales y por sujeto, nunca otra corrida completa por defecto.
+- El alcance se redefinió: no se mejoran las aplicaciones de terceros. Se mide el valor, coste y viabilidad de Mutant en una cohorte comparativa. El protocolo está en `research/MULTI-APP-ANALYSIS-PLAN.md` y los datos distinguen `analysis_level=project` de futuros agregados `analysis_level=global` con `cohort_id`.
+- La cohorte inicial aprobada `rwr-historical-8` cubre Rails 4 a 8.1 y RSpec/Minitest. Tras el baseline de ShinyCMS-ruby, el registro contiene nueve entradas: ShinyCMS-ruby queda visible como `baseline_failed` y `klaxon` es su reemplazo Rails 8.1 RSpec. El objetivo sigue siendo ocho corridas comparables válidas, no ocho instalaciones exitosas.
+- ShinyCMS-ruby alcanzó 687 ejemplos en 3 min 8 s tras la preparación documentada de gems, JavaScript/MJML y Node/npm, pero falló una aserción de i18n por 84 claves faltantes. No se modifica el proyecto ni se ejecuta Mutant. El detalle está en `research/baselines/shinycms-ruby-2026-09-10.md`.
 
 ## Material existente
 
@@ -32,6 +34,9 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - `research/TRIAGE-PLAN.md`: lotes, contrato de salida y orquestación para revisar la corrida completa sin cargar el reporte entero en un solo contexto.
 - `research/triage/consolidation-2026-09-10.md`: cobertura de la primera pasada, decisiones propuestas y orden de validación.
 - `research/mutant-runs/trailmix-subscription-paid-2026-09-10.md`: validación temporal de la primera decisión de triage.
+- `research/MULTI-APP-ANALYSIS-PLAN.md`: protocolo de la cohorte comparativa y reglas de agregación.
+- `research/cohort-apps.csv`: composición, SHA y estado de cada entrada de la cohorte.
+- `research/baselines/shinycms-ruby-2026-09-10.md`: primer resultado de viabilidad fallida de la cohorte.
 - `plans/2026-08-31-research-and-talk.md`: ramas y próximos cortes útiles.
 
 ## Fuentes a conservar

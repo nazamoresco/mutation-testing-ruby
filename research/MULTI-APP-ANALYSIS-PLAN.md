@@ -40,7 +40,9 @@ Mutant pasa.
 La selección inicial queda registrada en `research/cohort-apps.csv`. Incluye
 una app Rails 4 como sonda de compatibilidad histórica: si no alcanza un
 preflight válido, se conserva en las métricas de viabilidad y se incorpora un
-reemplazo para llegar a ocho corridas comparables.
+reemplazo para llegar a ocho corridas comparables. El registro puede por tanto
+tener más de ocho filas: las entradas `baseline_failed` documentan el costo de
+adopción y no cuentan como una corrida comparable.
 
 ## Protocolo por aplicación
 
