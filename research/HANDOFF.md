@@ -137,6 +137,17 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 - Registrar versiones exactas y comandos; no presentar resultados de una ejecución no reproducible.
 - Si un LLM ve código de terceros, limitar el contexto a lo necesario y conservar solo datos derivados o permitidos.
 
-## Primer prompt para la próxima sesión
+## Corte actual y próximo paso
 
-> Continuá el plan de `research/HANDOFF.md` en la rama `research/real-world-rails-pilot`. Tomá `research/triage/consolidation-2026-09-10.md` y la validación de `Subscription#paid?` como corte actual. Antes de tests de webhook/checkout, pedí una decisión explícita sobre la fuente de verdad e idempotencia de Stripe. Si se aprueba una decisión, prepará un test local y temporal para un solo sujeto, ejecutá RSpec y Mutant sólo sobre ese sujeto y actualizá su evidencia. No conviertas ningún mutante vivo en bug confirmado sin evidencia revisable y no modifiques ni publiques cambios en repositorios de terceros.
+- Las corridas completas válidas son Trailmix y Speakerline; ambas están
+  registradas como `analysis_level=project` y `cohort_id=rwr-historical-8`.
+- ShinyCMS y Shipit Engine están `baseline_failed`; no ejecutar Mutant sobre
+  ellas ni contar su setup o sus tests fallidos en estadísticas de mutantes.
+- Shipit Engine requiere dependencias nativas (PostgreSQL, YAML y MySQL), Node y
+  Git; su baseline limpio terminó con 1.245 tests, 4 fallas de caché Git de
+  fixture y 0 errores en 364,28 s. La evidencia está en
+  `research/baselines/shipit-engine-2026-09-11.md`.
+
+Siguiente candidato: preparar el baseline aislado de Klaxon o de uno de los
+candidatos históricos aún en cola. Mantener dos baselines verdes antes de
+integrar Mutant y no publicar ni modificar proyectos de terceros.
