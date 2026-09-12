@@ -143,11 +143,14 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   registradas como `analysis_level=project` y `cohort_id=rwr-historical-8`.
 - ShinyCMS y Shipit Engine están `baseline_failed`; no ejecutar Mutant sobre
   ellas ni contar su setup o sus tests fallidos en estadísticas de mutantes.
+- Klaxon aprobó dos baselines aislados en PostgreSQL con Ruby 3.4.8, Rails
+  8.1.3.1 y RSpec; la evidencia está en `research/baselines/klaxon-2026-09-12.md`.
 - Shipit Engine requiere dependencias nativas (PostgreSQL, YAML y MySQL), Node y
   Git; su baseline limpio terminó con 1.245 tests, 4 fallas de caché Git de
   fixture y 0 errores en 364,28 s. La evidencia está en
   `research/baselines/shipit-engine-2026-09-11.md`.
 
-Siguiente candidato: preparar el baseline aislado de Klaxon o de uno de los
-candidatos históricos aún en cola. Mantener dos baselines verdes antes de
-integrar Mutant y no publicar ni modificar proyectos de terceros.
+Siguiente paso: configurar Mutant sólo en un sandbox temporal de Klaxon,
+validar selección de tests con un sujeto pequeño y, si es válida, preparar la
+corrida completa como resultado `project`. No publicar ni modificar proyectos
+de terceros.
