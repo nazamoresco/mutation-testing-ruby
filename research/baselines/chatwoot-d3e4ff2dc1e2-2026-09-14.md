@@ -35,7 +35,16 @@ pnpm`.
 
 Tras instalar npm, pnpm 10.2.0 y el lockfile dentro del runner aislado,
 `spec/controllers/dashboard_controller_spec.rb` pasó con **4 ejemplos y 0
-fallas**. La repetición del baseline completo se inició en ese mismo entorno.
+fallas**. El primer baseline completo con esa receta terminó en **15 min 55 s**
+con **6.769 ejemplos, 1 falla y 67 pendientes**. La falla fue
+`spec/builders/agent_builder_spec.rb:47`, cuya expectativa de argumentos para
+`Devise::Mailer` recibió cero argumentos. El mismo ejemplo pasó aislado (1/1),
+por lo que se trata como posible flakiness dependiente de la suite, no como una
+falla reproducida del sujeto del estudio.
+
+La segunda suite completa se inició desde un esquema de test limpio. La primera
+repetición no permite ejecutar Mutant: el protocolo sigue exigiendo dos
+baselines completos verdes.
 
 El `package.json` de este SHA declara Node 24.x, mientras que la imagen Alpine
 disponible para este runner aporta Node 22.23.2. La repetición se conserva como
@@ -44,6 +53,6 @@ Vite, se repetirá con Node 24 antes de atribuirlas al proyecto histórico.
 
 ## Regla de decisión
 
-No se ejecutará Mutant para este padre hasta que la repetición completa termine
-verde. Si falla, se documentarán las fallas restantes como resultado de
-viabilidad, sin alterar Chatwoot para hacerlas pasar.
+No se ejecutará Mutant para este padre hasta obtener dos baselines completos
+verdes. Si la repetición falla, se documentarán las fallas restantes como
+resultado de viabilidad, sin alterar Chatwoot para hacerlas pasar.
