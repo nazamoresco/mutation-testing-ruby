@@ -16,6 +16,7 @@ require "tmpdir"
 
 class ManifestBuilder
   FIX_PATTERN = /\Afix(?:\([^)]+\))?!?:\s+/.freeze
+  BUG_LIKE_PATTERN = /\b(?:fix(?:e[ds])?|bug|regression|security|vulnerabilit(?:y|ies))\b/i.freeze
   DEFAULT_MUTANT_COMMAND = "bundle exec mutant run --usage opensource"
 
   def initialize(options)
@@ -29,6 +30,7 @@ class ManifestBuilder
     @execute = options.fetch(:execute)
     @prepare_command = options[:prepare_command]
     @excluded_path_prefixes = options.fetch(:excluded_path_prefixes)
+    @max_ruby_regions_per_commit = options[:max_ruby_regions_per_commit]
   end
 
   def call
@@ -41,7 +43,7 @@ class ManifestBuilder
     commits.each do |commit|
       if fix?(commit[:subject])
         fixes << commit if fixes.length < @max_fixes && usable?(commit)
-      elsif controls.length < @control_count && usable?(commit)
+      elsif controls.length < @control_count && control?(commit) && usable?(commit)
         controls << commit
       end
 
@@ -188,11 +190,20 @@ class ManifestBuilder
   end
 
   def usable?(commit)
-    commit[:parents].length == 1 && !ruby_hunks(commit).empty?
+    return false unless commit[:parents].length == 1
+
+    regions = ruby_hunks(commit)
+    return false if regions.empty?
+
+    @max_ruby_regions_per_commit.nil? || regions.length <= @max_ruby_regions_per_commit
   end
 
   def fix?(subject)
     FIX_PATTERN.match?(subject)
+  end
+
+  def control?(commit)
+    !BUG_LIKE_PATTERN.match?(commit[:subject])
   end
 
   def log_commits
@@ -225,7 +236,8 @@ options = {
   control_count: 50,
   mutant_command: ManifestBuilder::DEFAULT_MUTANT_COMMAND,
   execute: false,
-  excluded_path_prefixes: []
+  excluded_path_prefixes: [],
+  max_ruby_regions_per_commit: nil
 }
 
 OptionParser.new do |parser|
@@ -237,6 +249,7 @@ OptionParser.new do |parser|
   parser.on("--since DATE", "Only commits on/after DATE") { |value| options[:since] = value }
   parser.on("--until DATE", "Only commits on/before DATE") { |value| options[:until] = value }
   parser.on("--exclude-path-prefix PREFIX", "Exclude source paths with this prefix (repeatable)") { |value| options[:excluded_path_prefixes] << value }
+  parser.on("--max-ruby-regions-per-commit N", Integer, "Exclude commits changing more than N Ruby regions") { |value| options[:max_ruby_regions_per_commit] = value }
   parser.on("--mutant-command COMMAND", "Command prefix placed in the manifest") { |value| options[:mutant_command] = value }
   parser.on("--execute", "Create temporary parent worktrees and execute resolved subjects") { options[:execute] = true }
   parser.on("--prepare-command COMMAND", "Project setup command required with --execute") { |value| options[:prepare_command] = value }
@@ -247,5 +260,6 @@ abort "--repo is required" unless options[:repo]
 abort "--output is required" unless options[:output]
 abort "--max-fixes must be positive" unless options[:max_fixes].positive?
 abort "--control-count must be non-negative" if options[:control_count].negative?
+abort "--max-ruby-regions-per-commit must be positive" if options[:max_ruby_regions_per_commit] && !options[:max_ruby_regions_per_commit].positive?
 
 ManifestBuilder.new(options).call

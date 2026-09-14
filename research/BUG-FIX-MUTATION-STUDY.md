@@ -59,7 +59,7 @@ Una corrida completa de proyecto puede aportar contexto de costo, pero el
 análisis principal usa la suite y el código del padre: así los tests añadidos
 por el fix no contaminan el resultado pre-fix.
 
-## Candidato encontrado: Chatwoot
+## Candidato descartado: Chatwoot
 
 La exploración estática identifica a `chatwoot` como el candidato principal para
 esta línea histórica: Rails 7.2.3.1, Ruby 3.4.4 y RSpec, con 510 asuntos
@@ -68,8 +68,19 @@ inicial reproducible (`bug-fix-manifests/chatwoot-initial.csv`) toma cinco fixes
 y cinco controles, omitiendo `enterprise/`: 18 regiones de fix (15 con sujeto
 resuelto automáticamente) y 55 regiones de control (35 automáticas).
 
-Es un candidato de **historial fuerte e infraestructura pesada**, no aún una
-corrida válida: su CI requiere PostgreSQL con pgvector, Redis, Node/pnpm y
-divide RSpec en 16 nodos. Antes de usarlo para resultados, hay que probar un
-baseline aislado del padre de uno de los cinco fixes y documentar la receta de
-bootstrap. No se ejecutó Rails ni Mutant durante la selección.
+Es un candidato de **historial fuerte e infraestructura pesada**. El baseline
+del padre `d3e4ff2dc1e2` fue reproducido dos veces con una falla de suite en
+`AgentBuilder` que desaparece al aislar el ejemplo. Por tanto queda
+`baseline_flaky` y no se ejecutará Mutant. El detalle está en
+`baselines/chatwoot-d3e4ff2dc1e2-2026-09-14.md`.
+
+## Reemplazo seleccionado: Foodsoft
+
+`foodsoft` es el reemplazo de menor infraestructura relativa: Rails ~> 7.2.2,
+Ruby 3.4.7, RSpec, MySQL y Redis en CI, sin una etapa Node/Vite. Sus últimos
+1.000 commits contienen 44 asuntos `fix:`. El manifiesto
+`bug-fix-manifests/foodsoft-initial.csv` acota cada commit a cinco regiones Ruby
+como máximo y descarta controles cuyo asunto menciona fixes, bugs, regresiones o
+seguridad. Resulta en 8 regiones de fix, todas resueltas automáticamente, y 9
+controles no-bug, 7 resueltos automáticamente. El siguiente paso es preparar el
+baseline del padre `a8d5cbc8dbdc` antes de ejecutar Mutant.

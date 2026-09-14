@@ -42,17 +42,18 @@ con **6.769 ejemplos, 1 falla y 67 pendientes**. La falla fue
 por lo que se trata como posible flakiness dependiente de la suite, no como una
 falla reproducida del sujeto del estudio.
 
-La segunda suite completa se inició desde un esquema de test limpio. La primera
-repetición no permite ejecutar Mutant: el protocolo sigue exigiendo dos
-baselines completos verdes.
+La segunda suite completa, desde un esquema de test limpio, volvió a terminar
+con **6.769 ejemplos, 1 falla y 67 pendientes**. La falla fue exactamente el
+mismo ejemplo de `AgentBuilder`. Al pasar ese ejemplo aislado pero fallar en
+dos suites completas, el checkout queda clasificado como **baseline_flaky**.
 
 El `package.json` de este SHA declara Node 24.x, mientras que la imagen Alpine
-disponible para este runner aporta Node 22.23.2. La repetición se conserva como
-evidencia de viabilidad en ese entorno; si quedan fallas no relacionadas con
-Vite, se repetirá con Node 24 antes de atribuirlas al proyecto histórico.
+disponible para este runner aporta Node 22.23.2. Esta diferencia se conserva
+como limitación, pero no justifica ejecutar Mutant: las dos suites completas no
+son una base estable para el experimento.
 
 ## Regla de decisión
 
-No se ejecutará Mutant para este padre hasta obtener dos baselines completos
-verdes. Si la repetición falla, se documentarán las fallas restantes como
-resultado de viabilidad, sin alterar Chatwoot para hacerlas pasar.
+No se ejecutará Mutant para este padre. Chatwoot queda descartado como unidad
+del estudio histórico por baseline inestable, sin alterar Chatwoot para hacer
+pasar la suite.
