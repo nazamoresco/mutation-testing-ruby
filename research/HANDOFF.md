@@ -145,12 +145,16 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   ellas ni contar su setup o sus tests fallidos en estadísticas de mutantes.
 - Klaxon aprobó dos baselines aislados en PostgreSQL con Ruby 3.4.8, Rails
   8.1.3.1 y RSpec; la evidencia está en `research/baselines/klaxon-2026-09-12.md`.
+- Klaxon tiene una validación Mutant válida de `PageSnapshot#display_hash`:
+  1 sujeto, 4 tests seleccionados, 15 mutaciones (1 killed, 14 vivos, 0
+  timeouts) en 3,17 s. La corrida de aplicación completa posterior fue inválida
+  por instrumentar 0 sujetos y está excluida de cualquier agregado.
 - Shipit Engine requiere dependencias nativas (PostgreSQL, YAML y MySQL), Node y
   Git; su baseline limpio terminó con 1.245 tests, 4 fallas de caché Git de
   fixture y 0 errores en 364,28 s. La evidencia está en
   `research/baselines/shipit-engine-2026-09-11.md`.
 
-Siguiente paso: configurar Mutant sólo en un sandbox temporal de Klaxon,
-validar selección de tests con un sujeto pequeño y, si es válida, preparar la
-corrida completa como resultado `project`. No publicar ni modificar proyectos
-de terceros.
+Siguiente paso: construir un bootstrap temporal de Klaxon que cargue el código
+de la aplicación de forma explícita para que Mutant enumere sujetos. Validar
+primero sujetos y tests seleccionados antes de relanzar una corrida de proyecto.
+No publicar ni modificar proyectos de terceros.
