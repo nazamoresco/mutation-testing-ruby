@@ -16,8 +16,9 @@ ruby research/scripts/build_bug_fix_mutation_manifest.rb \
 ```
 
 Selecciona commits con asunto Conventional Commit `fix:` o `fix(scope):` y usa
-el primer padre como snapshot pre-fix. Cada fila describe un hunk Ruby cambiado
-en el fix, su rango en el padre y un comando plantilla para Mutant. También
+el primer padre como snapshot pre-fix. Cada fila describe un hunk Ruby de código
+fuente cambiado en el fix (excluye `spec/` y `test/`), su rango en el padre y un
+comando plantilla para Mutant. También
 selecciona controles candidatos: commits no `fix` con cambios Ruby del mismo
 historial. No hace checkouts, no instala gems y no ejecuta Mutant.
 

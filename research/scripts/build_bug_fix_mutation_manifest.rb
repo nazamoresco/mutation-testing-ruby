@@ -29,11 +29,18 @@ class ManifestBuilder
     verify_repository!
 
     commits = log_commits
-    fixes = commits.select { |commit| fix?(commit[:subject]) && usable?(commit) }
-                  .first(@max_fixes)
-    controls = commits.reject { |commit| fix?(commit[:subject]) }
-                      .select { |commit| usable?(commit) && ruby_changes?(commit) }
-                      .first(@control_count)
+    fixes = []
+    controls = []
+
+    commits.each do |commit|
+      if fix?(commit[:subject])
+        fixes << commit if fixes.length < @max_fixes && usable?(commit)
+      elsif controls.length < @control_count && usable?(commit)
+        controls << commit
+      end
+
+      break if fixes.length == @max_fixes && controls.length == @control_count
+    end
 
     rows = fixes.flat_map { |commit| rows_for(commit, "bug_fix") } +
            controls.flat_map { |commit| rows_for(commit, "nonfix_control") }
@@ -92,7 +99,7 @@ class ManifestBuilder
         path = match[1]
       elsif (match = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/))
         old_start, old_count, new_start, new_count = match.captures.map { |value| value&.to_i }
-        next unless path && path.end_with?(".rb")
+        next unless path && path.end_with?(".rb") && source_path?(path)
 
         hunks << {
           path: path,
@@ -113,6 +120,10 @@ class ManifestBuilder
 
   def ruby_changes?(commit)
     !ruby_hunks(commit).empty?
+  end
+
+  def source_path?(path)
+    !path.start_with?("spec/", "test/")
   end
 
   def usable?(commit)
