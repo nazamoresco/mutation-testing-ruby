@@ -6,10 +6,12 @@
 # from its first parent, where the defect still exists.
 
 require "csv"
+require "fileutils"
 require "open3"
 require "optparse"
 require "pathname"
 require "set"
+require "shellwords"
 
 class ManifestBuilder
   FIX_PATTERN = /\Afix(?:\([^)]+\))?!?:\s+/.freeze
@@ -23,6 +25,8 @@ class ManifestBuilder
     @since = options[:since]
     @until = options[:until]
     @mutant_command = options.fetch(:mutant_command)
+    @execute = options.fetch(:execute)
+    @prepare_command = options[:prepare_command]
   end
 
   def call
@@ -51,6 +55,8 @@ class ManifestBuilder
       rows.each { |row| csv << row }
     end
 
+    execute(rows) if @execute
+
     warn "Selected #{fixes.length} bug fixes, #{controls.length} controls and #{rows.length} Ruby change regions."
     warn "No target repository files were modified."
   end
@@ -66,7 +72,9 @@ class ManifestBuilder
   end
 
   def rows_for(commit, role)
+    @source_parent = commit[:parents].first
     ruby_hunks(commit).map do |hunk|
+      subject = subject_for(hunk[:path], hunk[:old_lines].first || hunk[:old_start])
       [
         role,
         commit[:sha],
@@ -76,12 +84,14 @@ class ManifestBuilder
         hunk[:old_lines].join(" "),
         hunk[:new_lines].join(" "),
         commit[:parents].first,
-        "",
-        "yes",
+        subject,
+        subject.empty? ? "yes" : "no",
         mutant_template(commit[:parents].first),
-        "Resolve mutant_subject to the enclosing method/class before execution; run against parent_sha, not fix commit."
+        subject.empty? ? "Automatic subject resolution failed; exclude this region." : "Resolved from parent source; execute against parent_sha."
       ]
     end
+  ensure
+    @source_parent = nil
   end
 
   def mutant_template(parent_sha)
@@ -104,7 +114,8 @@ class ManifestBuilder
         hunks << {
           path: path,
           old_lines: line_range(old_start, old_count || 1),
-          new_lines: line_range(new_start, new_count || 1)
+          new_lines: line_range(new_start, new_count || 1),
+          old_start: old_start
         }
       end
     end
@@ -124,6 +135,43 @@ class ManifestBuilder
 
   def source_path?(path)
     !path.start_with?("spec/", "test/")
+  end
+
+  def subject_for(path, line)
+    source = git("show", "#{@source_parent}:#{path}").lines
+    method_index = (line - 1).downto(0).find { |index| source[index]&.match?(/^\s*def\s+(?:self\.)?/) }
+    return "" unless method_index
+    method = source[method_index].match(/^\s*def\s+(self\.)?([a-zA-Z_]\w*[!?=]?|\[\]=?)/)
+    owner_index = method_index.downto(0).find { |index| source[index]&.match?(/^\s*(?:class|module)\s+[A-Z]\w*(?:::\w*)*/) }
+    return "" unless method && owner_index
+    owner = source[owner_index][/^\s*(?:class|module)\s+([A-Z]\w*(?:::\w*)*)/, 1]
+    "#{owner}#{method[1] ? "." : "#"}#{method[2]}"
+  end
+
+  def execute(rows)
+    raise "--prepare-command is required with --execute" unless @prepare_command
+    raise "--mutant-command must contain %{subject} with --execute" unless @mutant_command.include?("%{subject}")
+    targets = rows.reject { |row| row[8].empty? }.uniq { |row| [row[2], row[8]] }
+    results = @output.sub_ext(".results.csv")
+    CSV.open(results, "w") do |csv|
+      csv << %w[parent_sha subject exit_code runtime_seconds]
+      targets.each_with_index do |row, index|
+        parent_sha, subject = row[2], row[8]
+        worktree = "/tmp/mutant-bug-fix-study-#{parent_sha[0, 12]}-#{index}"
+        FileUtils.rm_rf(worktree)
+        run!("git", "-C", @repo.to_s, "worktree", "add", "--detach", worktree, parent_sha)
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        _prepare, prepare_status = Open3.capture2e("sh", "-lc", @prepare_command, chdir: worktree)
+        command = @mutant_command.gsub("%{subject}", Shellwords.escape(subject))
+        _output, status = prepare_status.success? ? Open3.capture2e("sh", "-lc", command, chdir: worktree) : ["", prepare_status]
+        csv << [parent_sha, subject, status.exitstatus, (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(2)]
+      end
+    end
+  end
+
+  def run!(*arguments)
+    output, status = Open3.capture2e(*arguments)
+    raise "#{arguments.join(" ")} failed:\n#{output}" unless status.success?
   end
 
   def usable?(commit)
@@ -162,7 +210,8 @@ end
 options = {
   max_fixes: 50,
   control_count: 50,
-  mutant_command: ManifestBuilder::DEFAULT_MUTANT_COMMAND
+  mutant_command: ManifestBuilder::DEFAULT_MUTANT_COMMAND,
+  execute: false
 }
 
 OptionParser.new do |parser|
@@ -174,6 +223,8 @@ OptionParser.new do |parser|
   parser.on("--since DATE", "Only commits on/after DATE") { |value| options[:since] = value }
   parser.on("--until DATE", "Only commits on/before DATE") { |value| options[:until] = value }
   parser.on("--mutant-command COMMAND", "Command prefix placed in the manifest") { |value| options[:mutant_command] = value }
+  parser.on("--execute", "Create temporary parent worktrees and execute resolved subjects") { options[:execute] = true }
+  parser.on("--prepare-command COMMAND", "Project setup command required with --execute") { |value| options[:prepare_command] = value }
   parser.on("-h", "--help", "Show this help") { puts parser; exit }
 end.parse!
 
