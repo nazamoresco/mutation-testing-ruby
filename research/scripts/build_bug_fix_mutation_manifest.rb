@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Build a read-only manifest for the bug-fix mutation study. It never checks out,
-# modifies, or executes the target repository. Each `fix:` commit is evaluated
-# from its first parent, where the defect still exists.
+# Build a manifest for the bug-fix mutation study. By default it only reads the
+# target repository. With --execute it creates and removes temporary worktrees
+# from each first parent, where the defect still exists.
 
 require "csv"
 require "fileutils"
@@ -12,6 +12,7 @@ require "optparse"
 require "pathname"
 require "set"
 require "shellwords"
+require "tmpdir"
 
 class ManifestBuilder
   FIX_PATTERN = /\Afix(?:\([^)]+\))?!?:\s+/.freeze
@@ -27,6 +28,7 @@ class ManifestBuilder
     @mutant_command = options.fetch(:mutant_command)
     @execute = options.fetch(:execute)
     @prepare_command = options[:prepare_command]
+    @excluded_path_prefixes = options.fetch(:excluded_path_prefixes)
   end
 
   def call
@@ -86,7 +88,7 @@ class ManifestBuilder
         commit[:parents].first,
         subject,
         subject.empty? ? "yes" : "no",
-        mutant_template(commit[:parents].first),
+        mutant_template,
         subject.empty? ? "Automatic subject resolution failed; exclude this region." : "Resolved from parent source; execute against parent_sha."
       ]
     end
@@ -94,9 +96,10 @@ class ManifestBuilder
     @source_parent = nil
   end
 
-  def mutant_template(parent_sha)
-    "git worktree add --detach /tmp/mutant-study-#{parent_sha[0, 12]} #{parent_sha} && " \
-      "cd /tmp/mutant-study-#{parent_sha[0, 12]} && #{@mutant_command} '$SUBJECT'"
+  def mutant_template
+    return @mutant_command.gsub("%{subject}", "$SUBJECT") if @mutant_command.include?("%{subject}")
+
+    "#{@mutant_command} '$SUBJECT'"
   end
 
   def ruby_hunks(commit)
@@ -134,7 +137,9 @@ class ManifestBuilder
   end
 
   def source_path?(path)
-    !path.start_with?("spec/", "test/")
+    return false if path.start_with?("spec/", "test/")
+
+    @excluded_path_prefixes.none? { |prefix| path.start_with?(prefix) }
   end
 
   def subject_for(path, line)
@@ -146,6 +151,8 @@ class ManifestBuilder
     return "" unless method && owner_index
     owner = source[owner_index][/^\s*(?:class|module)\s+([A-Z]\w*(?:::\w*)*)/, 1]
     "#{owner}#{method[1] ? "." : "#"}#{method[2]}"
+  rescue RuntimeError
+    ""
   end
 
   def execute(rows)
@@ -157,14 +164,20 @@ class ManifestBuilder
       csv << %w[parent_sha subject exit_code runtime_seconds]
       targets.each_with_index do |row, index|
         parent_sha, subject = row[2], row[8]
-        worktree = "/tmp/mutant-bug-fix-study-#{parent_sha[0, 12]}-#{index}"
-        FileUtils.rm_rf(worktree)
-        run!("git", "-C", @repo.to_s, "worktree", "add", "--detach", worktree, parent_sha)
-        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        _prepare, prepare_status = Open3.capture2e("sh", "-lc", @prepare_command, chdir: worktree)
-        command = @mutant_command.gsub("%{subject}", Shellwords.escape(subject))
-        _output, status = prepare_status.success? ? Open3.capture2e("sh", "-lc", command, chdir: worktree) : ["", prepare_status]
-        csv << [parent_sha, subject, status.exitstatus, (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(2)]
+        worktree = Dir.mktmpdir("mutant-bug-fix-study-#{parent_sha[0, 12]}-#{index}-")
+        added = false
+        begin
+          run!("git", "-C", @repo.to_s, "worktree", "add", "--detach", worktree, parent_sha)
+          added = true
+          started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          _prepare, prepare_status = Open3.capture2e("sh", "-lc", @prepare_command, chdir: worktree)
+          command = @mutant_command.gsub("%{subject}", Shellwords.escape(subject))
+          _output, status = prepare_status.success? ? Open3.capture2e("sh", "-lc", command, chdir: worktree) : ["", prepare_status]
+          csv << [parent_sha, subject, status.exitstatus, (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(2)]
+        ensure
+          run!("git", "-C", @repo.to_s, "worktree", "remove", "--force", worktree) if added
+          FileUtils.remove_entry_secure(worktree) if File.exist?(worktree)
+        end
       end
     end
   end
@@ -211,7 +224,8 @@ options = {
   max_fixes: 50,
   control_count: 50,
   mutant_command: ManifestBuilder::DEFAULT_MUTANT_COMMAND,
-  execute: false
+  execute: false,
+  excluded_path_prefixes: []
 }
 
 OptionParser.new do |parser|
@@ -222,6 +236,7 @@ OptionParser.new do |parser|
   parser.on("--control-count N", Integer, "Maximum non-fix controls (default: 50)") { |value| options[:control_count] = value }
   parser.on("--since DATE", "Only commits on/after DATE") { |value| options[:since] = value }
   parser.on("--until DATE", "Only commits on/before DATE") { |value| options[:until] = value }
+  parser.on("--exclude-path-prefix PREFIX", "Exclude source paths with this prefix (repeatable)") { |value| options[:excluded_path_prefixes] << value }
   parser.on("--mutant-command COMMAND", "Command prefix placed in the manifest") { |value| options[:mutant_command] = value }
   parser.on("--execute", "Create temporary parent worktrees and execute resolved subjects") { options[:execute] = true }
   parser.on("--prepare-command COMMAND", "Project setup command required with --execute") { |value| options[:prepare_command] = value }
