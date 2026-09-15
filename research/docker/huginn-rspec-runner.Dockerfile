@@ -20,5 +20,6 @@ WORKDIR /app
 
 COPY . /app
 
-RUN bundle config set --local build.nokogiri --use-system-libraries \
+RUN cp .env.example .env \
+  && bundle config set --local build.nokogiri --use-system-libraries \
   && bundle install -j 4 -r 3
