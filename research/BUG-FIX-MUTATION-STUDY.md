@@ -87,3 +87,13 @@ controles no-bug, 7 resueltos automáticamente. El baseline del padre
 la suite quedó bloqueada sin actividad después de los specs de sincronización de
 proveedores. Foodsoft queda `baseline_failed`; no se ejecutará Mutant. El detalle
 está en `baselines/foodsoft-a8d5cbc8dbdc-2026-09-15.md`.
+
+## Reemplazo seleccionado: Huginn
+
+`huginn` ofrece una siguiente cohorte viable para comprobar: Rails ~> 8.1.3,
+Ruby >= 3.4.0, RSpec y configuración de CI disponible. Entre sus últimos 1.000
+commits hay 5 asuntos Conventional Commit `fix:`. El manifiesto
+`bug-fix-manifests/huginn-initial.csv` toma hasta cinco fixes y cinco controles:
+produce 4 regiones de fix, todas con sujeto automático, y 13 controles no-bug,
+7 automáticos. El próximo paso es validar dos baselines del padre correspondiente
+a cada región antes de ejecutar Mutant.
