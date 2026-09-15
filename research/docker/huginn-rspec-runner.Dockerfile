@@ -2,6 +2,7 @@ FROM ruby:3.2-bookworm
 
 ENV BUNDLE_PATH=/gems \
     BUNDLE_WITHOUT="" \
+    DATABASE_ADAPTER=postgresql \
     RAILS_ENV=test
 
 RUN apt-get update \
