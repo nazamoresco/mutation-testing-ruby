@@ -74,13 +74,16 @@ del padre `d3e4ff2dc1e2` fue reproducido dos veces con una falla de suite en
 `baseline_flaky` y no se ejecutará Mutant. El detalle está en
 `baselines/chatwoot-d3e4ff2dc1e2-2026-09-14.md`.
 
-## Reemplazo seleccionado: Foodsoft
+## Reemplazo descartado: Foodsoft
 
-`foodsoft` es el reemplazo de menor infraestructura relativa: Rails ~> 7.2.2,
+`foodsoft` fue el reemplazo de menor infraestructura relativa: Rails ~> 7.2.2,
 Ruby 3.4.7, RSpec, MySQL y Redis en CI, sin una etapa Node/Vite. Sus últimos
 1.000 commits contienen 44 asuntos `fix:`. El manifiesto
 `bug-fix-manifests/foodsoft-initial.csv` acota cada commit a cinco regiones Ruby
 como máximo y descarta controles cuyo asunto menciona fixes, bugs, regresiones o
 seguridad. Resulta en 8 regiones de fix, todas resueltas automáticamente, y 9
-controles no-bug, 7 resueltos automáticamente. El siguiente paso es preparar el
-baseline del padre `a8d5cbc8dbdc` antes de ejecutar Mutant.
+controles no-bug, 7 resueltos automáticamente. El baseline del padre
+`a8d5cbc8dbdc` no terminó: tras completar la receta de MySQL, Redis y Chromium,
+la suite quedó bloqueada sin actividad después de los specs de sincronización de
+proveedores. Foodsoft queda `baseline_failed`; no se ejecutará Mutant. El detalle
+está en `baselines/foodsoft-a8d5cbc8dbdc-2026-09-15.md`.
