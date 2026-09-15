@@ -19,7 +19,9 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY . /app
+# Use a named build context so the application's production .dockerignore does
+# not omit the RSpec suite from this research-only test runner.
+COPY --from=source . /app
 
 RUN cp .env.example .env \
   && bundle config set --local build.nokogiri --use-system-libraries \
