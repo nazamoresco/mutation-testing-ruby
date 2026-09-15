@@ -7,6 +7,7 @@ ENV BUNDLE_PATH=/gems \
 RUN apt-get update \
   && apt-get install --no-install-recommends -y \
     build-essential \
+    chromium \
     default-libmysqlclient-dev \
     git \
     imagemagick \
