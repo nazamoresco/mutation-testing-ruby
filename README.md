@@ -21,34 +21,28 @@ runner above runs them in order.
 
 | Step | What it makes explicit |
 | --- | --- |
-| 01 | A mutation **subject** is `Calculator#positive?`. |
+| 01 | Run the original program and state the boundary contract. |
 | 02 | Ruby reflection gives the method's `source_location`. |
-| 03 | Prism parses the file and finds the method's `DefNode`. |
-| 04 | Operator calls in that node become mutation points. |
-| 05 | Prism's byte range replaces just the operator in source text. |
-| 06 | The changed source redefines the method at runtime. |
-| 07 | The redefinition happens in a forked child, not the parent. |
-| 08 | A boundary assertion kills the `>` → `>=` and `>` → `<` mutants. |
-| 09 | Without that boundary assertion, `>` → `>=` remains alive. |
+| 03 | Read the exact source text at that location. |
+| 04 | Prism parses the file and finds the method's `DefNode`. |
+| 05 | A `CallNode` supplies the `>` token and its exact source range. |
+| 06 | That range replaces just `>` with `>=` in source text. |
+| 07 | Evaluating the altered source redefines the method at runtime. |
+| 08 | A forked child runs the boundary assertion and kills the mutant. |
+| 09 | Without the boundary assertion, the same mutant remains alive. |
 
 ## How the miniature engine works
 
-1. `MiniMutant::Subject.instance_method(Calculator, :positive?)` starts with a
-   real Ruby method, then calls `source_location` to identify its file and
-   starting line.
-2. `MiniMutant::Discoverer` parses that source file using Prism and finds the
-   matching `Prism::DefNode`.
-3. It walks only that method's AST. Supported operator `CallNode`s become
-   `MutationPoint`s, retaining Prism's exact byte offsets and candidate
-   replacements.
-4. `SourceRewriter` replaces the source range of the operator token, for
-   example `>` with `>=`. This preserves all surrounding source text.
-5. `RuntimePatch` evaluates the altered source and therefore redefines the
-   Ruby method at runtime. `Runner` performs that patch in a child created by
-   `fork`.
-6. The child runs the supplied checks. An exception (normally an assertion)
-   makes the mutant **killed**; a clean run makes it **alive**. The child sends
-   the result back over a pipe, then exits, leaving the parent unmodified.
+The steps deliberately use local variables and repeat the preceding setup.
+They start with a real method and its `source_location`, parse its source with
+Prism, locate the operator's range, replace that source range, then evaluate
+the result. A `fork` isolates the runtime patch: a raised boundary assertion
+makes the mutant **killed**, while a clean run makes it **alive**.
+
+After that imperative walkthrough, `lib/mini_mutant` is the reusable refactor:
+`Subject`, `Discoverer`, `SourceRewriter`, and `Runner` give names to the same
+operations. The library is useful application code; the steps are the teaching
+material that makes its behavior visible.
 
 The `examples/calculator` directory contains conventional Minitest tests and a
 small callable suite used inside forked mutation runs. It covers comparison,
