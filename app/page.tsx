@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
+type Visual = 'question' | 'coverage' | 'mutation' | 'sourcePipeline' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
 
 type Slide = {
   index: string;
@@ -60,7 +60,16 @@ const slides: Slide[] = [
     claims: ['Una mutación expresa una hipótesis sobre una diferencia semántica.', 'El valor está en la diferencia que la suite no logró refutar.'],
   },
   {
-    index: '04', section: 'Decisión', minutes: 3, visual: 'decision',
+    index: '04', section: 'Mecanismo', minutes: 3, visual: 'sourcePipeline',
+    title: 'Del source al mutante, sin magia',
+    copy: 'La demo parte de un subject real: `Calculator#positive?`. Ruby devuelve su `source_location`; Prism parsea ese archivo, encuentra el `DefNode` del método y marca el `>` como punto de mutación. Con su rango exacto cambiamos solo ese token.',
+    annotation: 'Es una primera versión AST-guided: Prism guía el rango de source; no construimos otro AST ni lo reimprimimos con un unparser.',
+    code: 'subject  Calculator#positive?\nlocation calculator.rb:4\nAST      DefNode → CallNode(">")\npatch    > → >=',
+    presenter: ['Mostrá que el subject no es un nombre mágico: es un método Ruby del que podemos obtener archivo y línea.', 'Prism delimita exactamente el operador. El cambio conserva todo el source alrededor.', 'La mutación se aplica en runtime dentro de un fork: el hijo ejecuta los tests y el padre queda intacto.'],
+    claims: ['AST-guided no significa AST → AST → unparser: usamos el AST para elegir una sustitución de texto segura y acotada.', 'Killed es una aserción que falla en el hijo; alive es una corrida limpia que deja una hipótesis sin refutar.'],
+  },
+  {
+    index: '05', section: 'Decisión', minutes: 3, visual: 'decision',
     title: 'Para Mutant, un vivo abre dos acciones concretas',
     copy: 'Si el código mutado conserva la semántica que los tests ya especifican, el original es redundante: aceptamos la simplificación. Si el original era correcto pero el comportamiento removido importa, agregamos el test que falta.',
     annotation: 'Errores de entorno, flakiness o mutantes equivalentes son problemas previos de la ejecución; no los confundimos con esas dos acciones de producto.',
@@ -68,7 +77,7 @@ const slides: Slide[] = [
     claims: ['“Quedarse con el mutante” puede significar eliminar semántica redundante.', 'La otra acción es especificar con un test el comportamiento que sí importa.'],
   },
   {
-    index: '05', section: 'Ruby', minutes: 3, visual: 'ruby',
+    index: '06', section: 'Ruby', minutes: 3, visual: 'ruby',
     title: 'Rails necesita discovery e isolation, no solo una gem',
     copy: 'La configuración mínima inicializa Rails en test, carga el entorno y elige integración. Para que los subjects sean visibles hay que eager-load; con workers paralelos, base de datos y demás estado compartido deben aislarse.',
     annotation: 'Esta parte explica buena parte del coste de adopción: en Rails, una corrida confiable es infraestructura de tests.',
@@ -77,7 +86,7 @@ const slides: Slide[] = [
     claims: ['Un subject que no se eager-load puede no existir para Mutant.', 'Isolation también cubre filesystem, caches, colas y servicios externos, no solo la DB.'],
   },
   {
-    index: '06', section: 'Coste', minutes: 4, visual: 'cost',
+    index: '07', section: 'Coste', minutes: 3, visual: 'cost',
     title: 'El coste tiene tres relojes: ejecución, CI y revisión',
     copy: 'Cada mutante corre pruebas. Eso suma tiempo de cómputo y dinero de CI. Los supervivientes además consumen tiempo humano y, si usamos LLMs, tokens. Mutant plantea una estrategia explícita: full pass mientras entre en el tiempo aceptable; incremental sobre cambios cuando deje de entrar.',
     annotation: 'Incremental es un trade-off: acelera al mirar el working set, pero no detecta cambios indirectos.',
@@ -85,7 +94,7 @@ const slides: Slide[] = [
     claims: ['La estrategia incremental responde al tiempo de ida y vuelta aceptable para una persona.', 'Un full pass periódico compensa lo que `--since` no selecciona por cambios indirectos.'],
   },
   {
-    index: '07', section: 'Evidencia', minutes: 3, visual: 'evidence',
+    index: '08', section: 'Evidencia', minutes: 3, visual: 'evidence',
     title: 'Para hablar de coste, necesitamos datos de apps reales',
     copy: 'En lugar de basarnos en una demo, vamos a explorar Real World Rails: un corpus de más de 200 checkouts. Primero inventario estático; después un piloto pequeño, reproducible y atribuido a una versión concreta.',
     annotation: 'La charla puede mostrar investigación en progreso sin convertir una muestra pequeña en una verdad universal.',
@@ -93,7 +102,7 @@ const slides: Slide[] = [
     claims: ['Antes de comparar resultados, hay que registrar compatibilidad, baseline y configuración.', 'Una muestra honesta vale más que una estadística inflada.'],
   },
   {
-    index: '08', section: 'Piloto', minutes: 4, visual: 'pilot',
+    index: '09', section: 'Piloto', minutes: 3, visual: 'pilot',
     title: 'El piloto convierte reportes en datos, no en anécdotas',
     copy: 'Para cada mutante vivo guardaremos el sujeto, operador, ejecución, clasificación, evidencia y resolución. Solo contaremos un bug real cuando haya una confirmación revisable: un test, una corrección o una especificación explícita.',
     annotation: 'CSV para comparar y sesiones/reportes crudos para volver a leer el contexto. El formato machine-readable depende de la versión y edición de la herramienta.',
@@ -101,7 +110,7 @@ const slides: Slide[] = [
     claims: ['Un reporte de Mutant sin una taxonomía termina siendo ruido.', 'La reproducibilidad permite que la charla sea refutable y mejorable.'],
   },
   {
-    index: '09', section: 'LLMs', minutes: 3, visual: 'llm',
+    index: '10', section: 'LLMs', minutes: 3, visual: 'llm',
     title: 'Un LLM puede acelerar la lectura; no decidir el requerimiento',
     copy: 'Podemos pedirle a un LLM que explique el diff, encuentre tests relacionados y proponga una clasificación. Pero aceptar una simplificación o escribir un test es una decisión de producto, seguridad y dominio.',
     annotation: 'La IA no convierte una señal en verdad; puede reducir el coste de llegar a una decisión bien fundamentada.',
@@ -109,7 +118,7 @@ const slides: Slide[] = [
     claims: ['La trazabilidad de por qué aceptamos una decisión importa más que una respuesta fluida.', 'Los LLMs pueden ser un buen primer lector de mutantes, no el juez final.'],
   },
   {
-    index: '10', section: 'Adopción', minutes: 3, visual: 'adoption',
+    index: '11', section: 'Adopción', minutes: 3, visual: 'adoption',
     title: 'Vale la pena donde se cruzan criticidad, estabilidad y foco',
     copy: 'Empezaría por reglas de autorización, tenancy, límites, cálculos de dinero o cambios sensibles. Si la suite es flaky, no hay baseline o el coste supera la señal, primero hay trabajo previo que hacer.',
     annotation: 'No es una puerta de CI universal. Es una señal de alta fidelidad para zonas donde fallar cuesta más.',
@@ -117,7 +126,7 @@ const slides: Slide[] = [
     claims: ['Seguridad no requiere más tests en abstracto: requiere tests que fallen cuando una defensa se debilita.', 'Un buen rollout es selectivo, medible y revisable.'],
   },
   {
-    index: '11', section: 'Reflexión', minutes: 3, visual: 'reflection',
+    index: '12', section: 'Reflexión', minutes: 3, visual: 'reflection',
     title: 'Si la IA escribe más código, la escasez no será escribir',
     copy: 'El lugar interesante puede estar un nivel más arriba: herramientas que verifican, restringen y explican código generado. Mutation testing, complejidad, análisis estático y contraejemplos convierten velocidad en confianza calibrada.',
     annotation: 'Menos automatización que produce código sin verificar. Más metacódigo que nos ayuda a decidir si ese código merece confianza.',
@@ -178,6 +187,8 @@ function Diagram({ visual, coverageMode, setCoverageMode }: { visual: Visual; co
   if (visual === 'coverage') return <div className={card}><div className="mb-5 flex gap-2"><button onClick={() => setCoverageMode('line')} className={`border px-3 py-1.5 text-xs font-semibold ${coverageMode === 'line' ? 'border-[#9c1f31] bg-[#9c1f31] text-[#fffaf6]' : 'border-[#6c2330]/20 text-[#75555a]'}`}>Line coverage</button><button onClick={() => setCoverageMode('semantic')} className={`border px-3 py-1.5 text-xs font-semibold ${coverageMode === 'semantic' ? 'border-[#9c1f31] bg-[#9c1f31] text-[#fffaf6]' : 'border-[#6c2330]/20 text-[#75555a]'}`}>Cobertura semántica</button></div><div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center"><div className="border border-[#6c2330]/15 bg-[#fffaf6] p-4"><p className={label}>Suite</p><p className="mt-2 font-mono text-sm text-[#42191f]">age: 17 → false<br />age: 19 → true</p></div><div className="mx-auto text-2xl text-[#9c1f31]">→</div><div className={`border p-4 transition-colors ${coverageMode === 'line' ? 'border-[#cfb5b8] bg-[#f8eeea]' : 'border-[#9c1f31] bg-[#fff5f4]'}`}><p className={label}>{coverageMode === 'line' ? 'Sabemos' : 'Todavía falta'}</p><p className="mt-2 text-sm leading-relaxed text-[#42191f]">{coverageMode === 'line' ? 'La línea se ejecutó sin explotar.' : '¿Qué pasa exactamente con age: 18?'}</p></div></div></div>;
 
   if (visual === 'mutation') return <div className={`${card} overflow-hidden`}><div className="grid gap-3 sm:grid-cols-4 sm:items-stretch"><div className="border border-[#6c2330]/15 p-3"><p className={label}>Subject</p><p className="mt-3 font-mono text-sm text-[#42191f]">Person#adult?</p></div><div className="border border-[#9c1f31] bg-[#fff5f4] p-3"><p className={label}>Operator</p><p className="mt-3 font-mono text-sm font-semibold text-[#9c1f31]">&gt;= → &gt;</p></div><div className="border border-[#6c2330]/15 p-3"><p className={label}>Hypothesis</p><p className="mt-3 text-sm text-[#42191f]">ejecutar tests</p><div className="mt-3 h-1 overflow-hidden bg-[#f4e3df]"><div className="h-full w-2/3 animate-pulse bg-[#9c1f31]" /></div></div><div className="border border-[#6c2330]/15 p-3"><p className={label}>Veredicto</p><p className="mt-3 text-sm font-semibold text-[#42191f]">killed <span className="text-[#9a7073]">/</span> alive</p></div></div></div>;
+
+  if (visual === 'sourcePipeline') return <div className={`${card} overflow-hidden`}><div className="flex items-center justify-between gap-3 border-b border-[#6c2330]/15 pb-4"><div><p className={label}>MiniMutant · recorrido real</p><p className="mt-1 font-mono text-sm font-semibold text-[#42191f]">Calculator#positive?</p></div><span className="border border-[#9c1f31]/30 bg-[#fff5f4] px-2 py-1 font-mono text-xs text-[#9c1f31]">&gt; → &gt;=</span></div><div className="relative mt-4 grid gap-2 sm:grid-cols-3"><div className="hidden h-px bg-[#9c1f31]/25 sm:absolute sm:left-[11%] sm:right-[11%] sm:top-5" /><div className="relative bg-[#fffdfb] p-3"><span className="grid size-7 place-items-center rounded-full bg-[#9c1f31] font-mono text-xs text-[#fffaf6]">01</span><p className="mt-3 text-sm font-semibold">Reflexión</p><p className="mt-1 font-mono text-xs text-[#75555a]">source_location</p></div><div className="relative bg-[#fffdfb] p-3"><span className="grid size-7 place-items-center rounded-full bg-[#9c1f31] font-mono text-xs text-[#fffaf6]">02</span><p className="mt-3 text-sm font-semibold">Prism AST</p><p className="mt-1 font-mono text-xs text-[#75555a]">DefNode · CallNode</p></div><div className="relative bg-[#fffdfb] p-3"><span className="grid size-7 place-items-center rounded-full bg-[#9c1f31] font-mono text-xs text-[#fffaf6]">03</span><p className="mt-3 text-sm font-semibold">Rango de source</p><p className="mt-1 font-mono text-xs text-[#75555a]">reemplazo del token</p></div></div><div className="mt-2 grid gap-2 sm:grid-cols-2"><div className="border border-[#6c2330]/15 bg-[#fffaf6] p-3"><p className="font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#9c1f31]">04 · Runtime</p><p className="mt-2 text-sm font-semibold">Monkeypatch en un hijo con fork</p></div><div className="border border-[#9c1f31] bg-[#fff5f4] p-3"><p className="font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#9c1f31]">05 · Resultado</p><p className="mt-2 text-sm font-semibold">test falla: killed · test pasa: alive</p></div></div></div>;
 
   if (visual === 'decision') return <div className="grid gap-3 sm:grid-cols-2"><div className="border border-[#9c1f31] bg-[#9c1f31] p-4 text-[#fffaf6]"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-white/70">Alive mutation</p><p className="mt-2 text-xl font-semibold">La suite no refutó la hipótesis</p></div><div className="grid grid-cols-2 gap-3"><div className={card}><Check className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Agregar test</p><p className="mt-1 text-xs text-[#75555a]">el original importa</p></div><div className={card}><GitBranch className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Aceptar mutante</p><p className="mt-1 text-xs text-[#75555a]">simplificar original</p></div></div></div>;
 
