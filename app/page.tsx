@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -32,6 +32,114 @@ type Slide = {
   visual: Visual;
   presenter: string[];
   claims: string[];
+};
+
+type BrowserRubyValue = { toString: () => string };
+type BrowserRubyVm = { eval: (code: string) => BrowserRubyValue };
+type BrowserRubyRuntime = {
+  DefaultRubyVM: (module: WebAssembly.Module, options?: {
+    consolePrint?: { stdout?: (line: string) => void; stderr?: (line: string) => void };
+  }) => Promise<{ vm: BrowserRubyVm }>;
+};
+
+const RUBY_WASM_API = 'https://cdn.jsdelivr.net/npm/@ruby/wasm-wasi@2.10.1/dist/browser/+esm';
+const RUBY_WASM_BINARY = 'https://cdn.jsdelivr.net/npm/@ruby/3.3-wasm-wasi@2.10.1/dist/ruby+stdlib.wasm';
+
+const calculatorSource = `class Calculator
+  def positive?(number)
+    number > 0
+  end
+end
+`;
+
+const prismHelpers = `def nodes(node)
+  [node] + node.compact_child_nodes.flat_map { |child| nodes(child) }
+end
+
+tree = Prism.parse(source).value
+definition = nodes(tree).find { |node| node.is_a?(Prism::DefNode) && node.name == :positive? }
+call = nodes(definition).find { |node| node.is_a?(Prism::CallNode) && node.message_loc.slice == ">" }
+`;
+
+const runnableSteps: Record<ImperativeStep, string> = {
+  contract: `class Calculator
+  def positive?(number)
+    number > 0
+  end
+end
+
+raise "1 should be positive" unless Calculator.new.positive?(1)
+raise "0 should not be positive" if Calculator.new.positive?(0)
+"contract: 1 → true · 0 → false"`,
+  location: `source = <<~'RUBY'
+${calculatorSource}RUBY
+
+Object.class_eval(source, "calculator.rb", 1)
+path, line = Calculator.instance_method(:positive?).source_location
+"source_location → #{path}:#{line}"`,
+  source: `source = <<~'RUBY'
+${calculatorSource}RUBY
+
+Object.class_eval(source, "calculator.rb", 1)
+_path, line = Calculator.instance_method(:positive?).source_location
+"source (líneas #{line}–#{line + 2}):\\n#{source.lines[line - 1, 3].join}"`,
+  ast: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+"AST → #{tree.class} → #{definition.class} → #{call.class}"`,
+  point: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+"mutation point → #{call.message_loc.slice.inspect}, bytes #{range}"`,
+  replacement: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
+"before: #{source.lines[2].strip}\\nafter:  #{mutated.lines[2].strip}"`,
+  patch: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
+Object.class_eval(source, "calculator.rb", 1)
+Object.class_eval(mutated, "calculator.rb", 1)
+"runtime patch → positive?(0) is #{Calculator.new.positive?(0)}"`,
+  killed: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
+Object.class_eval(mutated, "calculator.rb", 1)
+
+begin
+  raise "0 became positive" if Calculator.new.positive?(0)
+  "alive"
+rescue RuntimeError => error
+  "killed → #{error.message}"
+end`,
+  alive: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
+Object.class_eval(mutated, "calculator.rb", 1)
+
+raise "1 should be positive" unless Calculator.new.positive?(1)
+"alive → 1 sigue siendo positivo y no hay una aserción para 0"`,
 };
 
 const slides: Slide[] = [
@@ -261,6 +369,67 @@ function RubyCode({ code }: { code: string }) {
   });
 }
 
+function RubyLab({ initialCode }: { initialCode: string }) {
+  const [code, setCode] = useState(initialCode);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'running' | 'error' | 'done'>('idle');
+  const [output, setOutput] = useState('');
+  const wasmModule = useRef<WebAssembly.Module | null>(null);
+  const stdout = useRef('');
+
+  const run = async () => {
+    setStatus(wasmModule.current ? 'running' : 'loading');
+    setOutput('');
+    stdout.current = '';
+
+    try {
+      const runtime = await import(/* @vite-ignore */ RUBY_WASM_API) as BrowserRubyRuntime;
+      if (!wasmModule.current) {
+        const response = await fetch(RUBY_WASM_BINARY);
+        if (!response.ok) throw new Error(`No se pudo descargar Ruby (${response.status})`);
+        try {
+          wasmModule.current = await WebAssembly.compileStreaming(response);
+        } catch {
+          wasmModule.current = await WebAssembly.compile(await response.arrayBuffer());
+        }
+      }
+
+      setStatus('running');
+      const { vm } = await runtime.DefaultRubyVM(wasmModule.current, {
+        consolePrint: {
+          stdout: (line) => { stdout.current += line; },
+          stderr: (line) => { stdout.current += line; },
+        },
+      });
+      const result = vm.eval(`begin
+${code}
+rescue Exception => error
+  "ERROR: #{error.class}: #{error.message}"
+end`);
+      const returned = result.toString();
+      setOutput([stdout.current.trim(), returned].filter(Boolean).join('\n'));
+      setStatus('done');
+    } catch (error) {
+      setOutput(error instanceof Error ? error.message : 'Ruby no pudo iniciar.');
+      setStatus('error');
+    }
+  };
+
+  const label = status === 'loading' ? 'Cargando Ruby 3.3…' : status === 'running' ? 'Ejecutando…' : 'Ejecutar Ruby';
+
+  return <section className="border border-[#9c1f31]/35 bg-[#fffdfb] p-4 shadow-[0_10px_30px_rgba(91,30,42,.06)]">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div><p className="font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#9c1f31]">Laboratorio ejecutable</p><p className="mt-1 text-xs leading-relaxed text-[#75555a]">Ruby 3.3 corre en esta pestaña mediante WebAssembly. Podés editar el ejemplo.</p></div>
+      <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => { setCode(initialCode); setOutput(''); setStatus('idle'); }}>Restaurar</Button><Button size="sm" variant="secondary" disabled={status === 'loading' || status === 'running'} onClick={run}><Code2 /> {label}</Button></div>
+    </div>
+    <label className="mt-4 block"><span className="sr-only">Código Ruby ejecutable</span><textarea aria-label="Código Ruby ejecutable" className="min-h-48 w-full resize-y border border-[#6c2330]/20 bg-[#f8eeea] p-3 font-mono text-xs leading-5 text-[#42191f] outline-none focus:border-[#9c1f31] focus:ring-1 focus:ring-[#9c1f31]" onChange={(event) => setCode(event.target.value)} spellCheck={false} value={code} /></label>
+    <div aria-live="polite" className={`mt-3 border-l-2 px-3 py-2 font-mono text-xs leading-5 ${status === 'error' ? 'border-[#9c1f31] bg-[#fff0ef] text-[#9c1f31]' : 'border-[#6b3d7a] bg-[#f7f0f8] text-[#42191f]'}`}>
+      <span className="font-bold uppercase tracking-[.12em] text-[#75555a]">Salida</span>
+      <pre className="mt-1 whitespace-pre-wrap">{output || 'Todavía no se ejecutó.'}</pre>
+    </div>
+    <p className="mt-3 text-xs leading-relaxed text-[#75555a]">Cada ejecución crea una VM nueva: reproduce el aislamiento para la demo. El navegador no expone <code>fork</code>, así que el paso 08 ejecuta el cuerpo del “hijo” dentro de esa VM aislada.</p>
+  </section>;
+}
+
 function Diagram({ visual, step, coverageMode, setCoverageMode }: { visual: Visual; step?: ImperativeStep; coverageMode: 'line' | 'semantic'; setCoverageMode: (mode: 'line' | 'semantic') => void }) {
   const card = 'border border-[#6c2330]/20 bg-[#fffdfb] p-4 shadow-[0_10px_30px_rgba(91,30,42,.06)]';
   const label = 'font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#9c1f31]';
@@ -340,7 +509,7 @@ export default function Home() {
       <nav className="border-b border-[#6c2330]/15 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Recorrido</p><div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">{slides.map((slide, index) => <button key={slide.index} onClick={() => { setSourcesOpen(false); setActive(index); }} className={`flex items-center gap-3 px-2 py-2 text-left transition ${!sourcesOpen && index === active ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#75555a] hover:bg-[#f4e3df] hover:text-[#42191f]'}`}><span className="font-mono text-xs">{slide.index}</span><span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span></button>)}</div><button onClick={() => setSourcesOpen(true)} className={`mt-4 flex w-full items-center gap-3 border-t border-[#6c2330]/15 px-2 pt-4 text-left text-sm font-medium transition ${sourcesOpen ? 'text-[#9c1f31]' : 'text-[#75555a] hover:text-[#42191f]'}`}><ExternalLink className="size-3" /> Fuentes y lecturas</button><p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]"><span className="block font-mono text-[#9c1f31]">35 min</span>de contenido + 5 min de preguntas</p></nav>
 
       <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-5xl">{sourcesOpen ? <SourcesLibrary /> : <><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
-        {!presenterMode ? <div className="grid gap-10 lg:grid-cols-[1.03fr_.97fr] lg:items-center"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} step={current.step} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
+        {!presenterMode ? <div className="grid gap-10 lg:grid-cols-[1.03fr_.97fr] lg:items-center"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} step={current.step} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}{current.step && <RubyLab initialCode={runnableSteps[current.step]} key={current.index} />}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
         <footer className="mt-12 flex items-center justify-between border-t border-[#6c2330]/15 pt-5"><Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button><div className="hidden items-center gap-2 text-xs text-[#75555a] sm:flex"><CircleDot className="size-3 text-[#9c1f31]" /> Flechas para navegar · P para presentador</div><Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button></footer></>}
       </div></section>
     </div>
