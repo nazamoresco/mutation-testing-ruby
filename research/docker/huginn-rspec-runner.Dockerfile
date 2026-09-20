@@ -28,3 +28,8 @@ COPY . /app
 RUN cp .env.example .env \
   && bundle config set --local build.nokogiri --use-system-libraries \
   && bundle install -j 4 -r 3
+
+RUN useradd --create-home --uid 1000 huginn \
+  && chown -R huginn:huginn /app /gems
+
+USER huginn

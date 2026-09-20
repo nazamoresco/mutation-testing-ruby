@@ -90,10 +90,17 @@ está en `baselines/foodsoft-a8d5cbc8dbdc-2026-09-15.md`.
 
 ## Reemplazo seleccionado: Huginn
 
-`huginn` ofrece una siguiente cohorte viable para comprobar: Rails ~> 8.1.3,
-Ruby >= 3.4.0, RSpec y configuración de CI disponible. Entre sus últimos 1.000
-commits hay 5 asuntos Conventional Commit `fix:`. El manifiesto
+`huginn` ofrece una cohorte viable para comprobar: Rails ~> 8.1.3, Ruby >= 3.4.0,
+RSpec y configuración de CI disponible en el inventario actual. Entre sus
+últimos 1.000 commits hay 5 asuntos Conventional Commit `fix:`. El manifiesto
 `bug-fix-manifests/huginn-initial.csv` toma hasta cinco fixes y cinco controles:
 produce 4 regiones de fix, todas con sujeto automático, y 13 controles no-bug,
-7 automáticos. El próximo paso es validar dos baselines del padre correspondiente
-a cada región antes de ejecutar Mutant.
+7 automáticos.
+
+El primer padre seleccionado, `fe300ef5087f`, aprobó dos baselines completos en
+su entorno histórico (Ruby 3.2, Rails 6.1.7.3 y RSpec): 1.670 ejemplos y 0
+fallas en cada pasada, con semillas 52735 y 22891. La receta, los intentos
+técnicos excluidos y los tiempos están en
+`baselines/huginn-fe300ef5087f-2026-09-20.md`. Puede avanzar a una validación
+temporal de Mutant sobre un único sujeto; no se debe ejecutar una comparación
+completa hasta validar carga, selección de tests y aislamiento de la base.
