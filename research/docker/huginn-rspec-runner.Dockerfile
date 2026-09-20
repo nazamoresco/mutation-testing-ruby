@@ -11,6 +11,7 @@ RUN apt-get update \
     chromium \
     default-libmysqlclient-dev \
     git \
+    jq \
     libpq-dev \
     nodejs \
     pkg-config \
