@@ -9,6 +9,7 @@ RUN apt-get update \
   && apt-get install --no-install-recommends -y \
     build-essential \
     chromium \
+    chromium-driver \
     default-libmysqlclient-dev \
     git \
     jq \
