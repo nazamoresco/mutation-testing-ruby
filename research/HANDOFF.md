@@ -164,6 +164,11 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   clasificación y no son bugs. Falta preparar un control con su propio baseline
   pre-fix antes de comparar grupos.
 
+- El control automático `Agent#with_execution_lock` en `52cda2bc` aprobó dos
+  baselines (1.866 ejemplos, 0 fallas) y su sonda obtuvo 26 mutaciones (16
+  killed, 10 alive, 0 timeouts). La diferencia Ruby/Mutant con el fix impide
+  estimar un efecto fix-versus-control; las filas siguen sólo a nivel project.
+
 Próximo paso histórico: elegir el control automático más comparable, validar
 dos baselines de su padre pre-fix y repetir una sonda con la receta temporal de
 Huginn. Sólo entonces comparar `bug_fix` contra `nonfix_control`, manteniendo

@@ -15,6 +15,7 @@ RUN apt-get update \
     jq \
     libpq-dev \
     nodejs \
+    npm \
     pkg-config \
   && rm -rf /var/lib/apt/lists/*
 

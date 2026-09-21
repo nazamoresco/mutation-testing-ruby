@@ -110,3 +110,9 @@ cohort separado `historical-bug-fix-pilot`; no constituye evidencia de bugs ni
 una comparación entre grupos. El informe es
 `mutant-runs/huginn-jobs-helper-agent-from-job-2026-09-21.md`. El siguiente
 paso es baselinar y sondear un control en su propio padre pre-fix.
+
+El control `Agent#with_execution_lock` en `52cda2bc` aprobó dos baselines
+(1.866 ejemplos, 0 fallas) y una sonda focalizada: 26 mutaciones, 16 killed,
+10 vivos y 0 timeouts. Como esa sonda usa Ruby 3.4/Mutant 0.17 y la del fix
+Ruby 3.2/Mutant 0.14, el par demuestra factibilidad pero no una comparación
+causal o estadística; la próxima cohorte debe fijar una celda Ruby/Mutant común.
