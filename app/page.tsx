@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type Visual = 'question' | 'coverage' | 'mutation' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
+type Visual = 'question' | 'coverage' | 'mutation' | 'imperative' | 'refactor' | 'decision' | 'ruby' | 'cost' | 'evidence' | 'pilot' | 'llm' | 'adoption' | 'reflection';
+type ImperativeStep = 'contract' | 'location' | 'source' | 'ast' | 'point' | 'replacement' | 'patch' | 'killed' | 'alive';
 
 type Slide = {
   index: string;
@@ -27,9 +28,118 @@ type Slide = {
   copy: string;
   annotation: string;
   code?: string;
+  step?: ImperativeStep;
   visual: Visual;
   presenter: string[];
   claims: string[];
+};
+
+type BrowserRubyValue = { toString: () => string };
+type BrowserRubyVm = { eval: (code: string) => BrowserRubyValue };
+type BrowserRubyRuntime = {
+  DefaultRubyVM: (module: WebAssembly.Module, options?: {
+    consolePrint?: { stdout?: (line: string) => void; stderr?: (line: string) => void };
+  }) => Promise<{ vm: BrowserRubyVm }>;
+};
+
+const RUBY_WASM_API = 'https://cdn.jsdelivr.net/npm/@ruby/wasm-wasi@2.10.1/dist/browser/+esm';
+const RUBY_WASM_BINARY = 'https://cdn.jsdelivr.net/npm/@ruby/3.3-wasm-wasi@2.10.1/dist/ruby+stdlib.wasm';
+
+const calculatorSource = `class Citizen
+  def adult?(age)
+    age >= 18
+  end
+end
+`;
+
+const prismHelpers = `def nodes(node)
+  [node] + node.compact_child_nodes.flat_map { |child| nodes(child) }
+end
+
+tree = Prism.parse(source).value
+definition = nodes(tree).find { |node| node.is_a?(Prism::DefNode) && node.name == :adult? }
+call = nodes(definition).find { |node| node.is_a?(Prism::CallNode) && node.message_loc.slice == ">=" }
+`;
+
+const runnableSteps: Record<ImperativeStep, string> = {
+  contract: `class Citizen
+  def adult?(age)
+    age >= 18
+  end
+end
+
+raise "18 should be adult" unless Citizen.new.adult?(18)
+raise "17 should not be adult" if Citizen.new.adult?(17)
+"contract: 18 → true · 17 → false"`,
+  location: `source = <<~'RUBY'
+${calculatorSource}RUBY
+
+Object.class_eval(source, "citizen.rb", 1)
+path, line = Citizen.instance_method(:adult?).source_location
+"source_location → #{path}:#{line}"`,
+  source: `source = <<~'RUBY'
+${calculatorSource}RUBY
+
+Object.class_eval(source, "citizen.rb", 1)
+_path, line = Citizen.instance_method(:adult?).source_location
+"source (líneas #{line}–#{line + 2}):\\n#{source.lines[line - 1, 3].join}"`,
+  ast: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+"AST → #{tree.class} → #{definition.class} → #{call.class}"`,
+  point: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+"mutation point → #{call.message_loc.slice.inspect}, bytes #{range}"`,
+  replacement: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+"before: #{source.lines[2].strip}\\nafter:  #{mutated.lines[2].strip}"`,
+  patch: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+Object.class_eval(source, "citizen.rb", 1)
+Object.class_eval(mutated, "citizen.rb", 1)
+"runtime patch → adult?(18) is #{Citizen.new.adult?(18)}"`,
+  killed: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+Object.class_eval(mutated, "citizen.rb", 1)
+
+begin
+  raise "18 is no longer adult" unless Citizen.new.adult?(18)
+  "alive"
+rescue RuntimeError => error
+  "killed → #{error.message}"
+end`,
+  alive: `require "prism"
+source = <<~'RUBY'
+${calculatorSource}RUBY
+
+${prismHelpers}
+range = call.message_loc.start_offset...call.message_loc.end_offset
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+Object.class_eval(mutated, "citizen.rb", 1)
+
+raise "19 should be adult" unless Citizen.new.adult?(19)
+"alive → 19 sigue siendo adulto y no hay una aserción para 18"`,
 };
 
 const slides: Slide[] = [
@@ -51,7 +161,7 @@ const slides: Slide[] = [
     claims: ['100% de line coverage no equivale a 100% de confianza semántica.', 'La cobertura indica por dónde pasó la suite; Mutant pregunta qué diferencia habría detectado.'],
   },
   {
-    index: '03', section: 'Mecanismo', minutes: 4, visual: 'mutation',
+    index: '03', section: 'Mecanismo', minutes: 2, visual: 'mutation',
     title: 'Una mutación es una hipótesis que los tests deberían refutar',
     copy: 'Mutant toma un subject —una pieza de código seleccionable—, le aplica un mutation operator sobre su AST y ejecuta los tests relevantes. Si no logra refutar esa hipótesis, la mutación queda viva.',
     annotation: 'La nomenclatura de Mutant ayuda a explicar el mecanismo sin reducirlo a “cambiar una línea”.',
@@ -60,7 +170,97 @@ const slides: Slide[] = [
     claims: ['Una mutación expresa una hipótesis sobre una diferencia semántica.', 'El valor está en la diferencia que la suite no logró refutar.'],
   },
   {
-    index: '04', section: 'Decisión', minutes: 3, visual: 'decision',
+    index: '04', section: 'MiniMutant · 01', minutes: 0.5, visual: 'imperative', step: 'contract',
+    title: 'Primero: una regla observable',
+    copy: 'No empezamos creando una abstracción. Ejecutamos `Citizen#adult?` y fijamos el contrato que queremos proteger: a los `18` es adulto; a los `17`, no.',
+    annotation: 'Todo mutante solo tiene sentido frente a una observación de comportamiento.',
+    code: 'citizen = Citizen.new\nraise unless citizen.adult?(18)\nraise if citizen.adult?(17)',
+    presenter: ['Mostrá el método original y los dos resultados antes de hablar de AST o de mutantes.'],
+    claims: ['La prueba de borde es una decisión de dominio, no un detalle de la herramienta.'],
+  },
+  {
+    index: '05', section: 'MiniMutant · 02', minutes: 0.5, visual: 'imperative', step: 'location',
+    title: 'El método nos lleva a su source',
+    copy: 'La reflexión de Ruby nos entrega el archivo y la línea de inicio del método real. Ya tenemos una coordenada verificable; no un nombre inventado ni una búsqueda textual ambigua.',
+    annotation: 'Esto es lo que después una clase llamará `Subject`; por ahora son dos variables.',
+    code: 'method = Citizen.instance_method(:adult?)\npath, line = method.source_location',
+    presenter: ['Leé el valor de `path:line`: la siguiente operación trabaja sobre ese archivo exacto.'],
+    claims: ['`source_location` conecta un método que existe en runtime con su implementación Ruby.'],
+  },
+  {
+    index: '06', section: 'MiniMutant · 03', minutes: 0.5, visual: 'imperative', step: 'source',
+    title: 'Leemos exactamente lo que Ruby ejecuta',
+    copy: 'Con esa coordenada leemos el archivo y mostramos las tres líneas del método. El programa que queremos mutar todavía es texto: conserva espacios, comentarios y todo el contexto alrededor.',
+    annotation: 'Antes de cambiar nada, hacemos visible el material de la mutación.',
+    code: 'source = File.binread(path)\nputs source.lines[line - 1, 3]',
+    presenter: ['Detenete en `age >= 18`: esos dos caracteres son la diferencia que queremos poner a prueba.'],
+    claims: ['Leer source no es parsearlo: todavía no sabemos qué `>=` pertenece a qué expresión.'],
+  },
+  {
+    index: '07', section: 'MiniMutant · 04', minutes: 0.5, visual: 'imperative', step: 'ast',
+    title: 'Prism convierte texto en estructura',
+    copy: 'Prism parsea el archivo y recorremos el árbol hasta encontrar el `DefNode` de `adult?` que empieza en la línea conocida. Ahora delimitamos el método, no todo el archivo.',
+    annotation: 'El AST no reemplaza el source: nos da una forma confiable de ubicar una parte de él.',
+    code: 'tree = Prism.parse(source).value\ndefinition = nodes(tree).find { |node|\n  node.is_a?(Prism::DefNode) && node.name == :adult?\n}',
+    presenter: ['Mostrá el salto: de un string completo a una única definición de método.'],
+    claims: ['La selección por nombre y línea evita mutar otro método con el mismo operador.'],
+  },
+  {
+    index: '08', section: 'MiniMutant · 05', minutes: 0.5, visual: 'imperative', step: 'point',
+    title: 'Encontramos un punto, no una línea entera',
+    copy: 'Dentro de ese `DefNode`, buscamos el `CallNode` cuyo mensaje es `>=`. Prism devuelve su rango de bytes: sabemos con precisión qué token es reemplazable.',
+    annotation: 'El mutation point es el operador y su rango; no “la línea cinco”.',
+    code: 'call = nodes(definition).find { |node|\n  node.is_a?(Prism::CallNode) && node.message_loc.slice == ">="\n}\nrange = call.message_loc',
+    presenter: ['Marcá que el rango señala un carácter, aunque la expresión tenga más código alrededor.'],
+    claims: ['El AST guía una sustitución segura y acotada de source.'],
+  },
+  {
+    index: '09', section: 'MiniMutant · 06', minutes: 0.5, visual: 'imperative', step: 'replacement',
+    title: 'Construimos el mutante por rango',
+    copy: 'Cortamos el source antes y después del rango, e insertamos `>`. El resto del archivo queda idéntico: no serializamos un AST nuevo ni necesitamos un unparser.',
+    annotation: 'Esta es la decisión didáctica central: AST-guided source mutation.',
+    code: 'mutated = source.byteslice(0, range.start_offset) +\n  ">" + source.byteslice(range.end_offset..)',
+    presenter: ['Mostrá el before/after: `age >= 18` se vuelve `age > 18`.'],
+    claims: ['El cambio es pequeño a propósito: expresa una hipótesis semántica precisa.'],
+  },
+  {
+    index: '10', section: 'MiniMutant · 07', minutes: 0.5, visual: 'imperative', step: 'patch',
+    title: 'El source mutado redefine el método',
+    copy: 'Evaluamos el archivo mutado en runtime. El método cambia de verdad: ahora `adult?(18)` devuelve `false`. Tenemos un programa incorrecto, listo para desafiar a la suite.',
+    annotation: 'Este paso es visible a propósito; todavía no aislamos el cambio.',
+    code: 'TOPLEVEL_BINDING.eval(mutated, path, 1)\nputs Citizen.new.adult?(18) # false',
+    presenter: ['Preguntá: ¿qué debería hacer una prueba que especifica el borde de edad?'],
+    claims: ['Una mutación no es un diff decorativo: cambia el comportamiento que ejecuta Ruby.'],
+  },
+  {
+    index: '11', section: 'MiniMutant · 08', minutes: 0.5, visual: 'imperative', step: 'killed',
+    title: 'Fork: el hijo recibe el mutante',
+    copy: 'Aplicamos el mismo patch dentro de un proceso hijo y ejecutamos la aserción de borde. El hijo falla, informa `killed` y termina; el proceso padre conserva la implementación original.',
+    annotation: 'Isolation deja de ser vocabulario: se observa que el padre conserva `adult?(18) → true`.',
+    code: 'fork do\n  eval(mutated, TOPLEVEL_BINDING, path, 1)\n  raise unless Citizen.new.adult?(18)\nend # killed',
+    presenter: ['Compará ambos procesos: hijo mutado, padre intacto.'],
+    claims: ['Una aserción que falla mata al mutante.'],
+  },
+  {
+    index: '12', section: 'MiniMutant · 09', minutes: 0.5, visual: 'imperative', step: 'alive',
+    title: 'Sin el borde, el mismo mutante sobrevive',
+    copy: 'Ahora el hijo solo prueba que a los `19` es adulto. La mutación `>=` → `>` conserva ese resultado, la corrida termina limpia y el veredicto es `alive`.',
+    annotation: 'Alive no exige “agregar más tests”: primero pregunta si ese borde es un comportamiento requerido.',
+    code: 'raise unless Citizen.new.adult?(19)\n# no assertion for 18 → alive',
+    presenter: ['Volvé a la decisión: test faltante, simplificación o mutante equivalente.'],
+    claims: ['Un vivo revela una hipótesis que la suite no logró refutar.'],
+  },
+  {
+    index: '13', section: 'MiniMutant · refactor', minutes: 0.5, visual: 'refactor',
+    title: 'Recién ahora extraemos nombres reutilizables',
+    copy: 'Las clases no agregan una nueva idea: reúnen las operaciones que ya vimos. `Subject`, `Discoverer`, `SourceRewriter` y `Runner` son un refactor del recorrido imperativo.',
+    annotation: 'La API reusable queda como destino y material de consulta; los steps conservan el mecanismo a la vista.',
+    code: 'Subject → source_location\nDiscoverer → Prism + mutation points\nSourceRewriter → range replacement\nRunner → fork + killed / alive',
+    presenter: ['Mostrá los cuatro nombres como etiquetas del pipeline ya construido, no como una caja negra.'],
+    claims: ['Una buena abstracción comprime una mecánica que ya entendemos.'],
+  },
+  {
+    index: '14', section: 'Decisión', minutes: 3, visual: 'decision',
     title: 'Para Mutant, un vivo abre dos acciones concretas',
     copy: 'Si el código mutado conserva la semántica que los tests ya especifican, el original es redundante: aceptamos la simplificación. Si el original era correcto pero el comportamiento removido importa, agregamos el test que falta.',
     annotation: 'Errores de entorno, flakiness o mutantes equivalentes son problemas previos de la ejecución; no los confundimos con esas dos acciones de producto.',
@@ -68,7 +268,7 @@ const slides: Slide[] = [
     claims: ['“Quedarse con el mutante” puede significar eliminar semántica redundante.', 'La otra acción es especificar con un test el comportamiento que sí importa.'],
   },
   {
-    index: '05', section: 'Ruby', minutes: 3, visual: 'ruby',
+    index: '15', section: 'Ruby', minutes: 3, visual: 'ruby',
     title: 'Rails necesita discovery e isolation, no solo una gem',
     copy: 'La configuración mínima inicializa Rails en test, carga el entorno y elige integración. Para que los subjects sean visibles hay que eager-load; con workers paralelos, base de datos y demás estado compartido deben aislarse.',
     annotation: 'Esta parte explica buena parte del coste de adopción: en Rails, una corrida confiable es infraestructura de tests.',
@@ -77,7 +277,7 @@ const slides: Slide[] = [
     claims: ['Un subject que no se eager-load puede no existir para Mutant.', 'Isolation también cubre filesystem, caches, colas y servicios externos, no solo la DB.'],
   },
   {
-    index: '06', section: 'Coste', minutes: 4, visual: 'cost',
+    index: '16', section: 'Coste', minutes: 3, visual: 'cost',
     title: 'El coste tiene tres relojes: ejecución, CI y revisión',
     copy: 'Cada mutante corre pruebas. Eso suma tiempo de cómputo y dinero de CI. Los supervivientes además consumen tiempo humano y, si usamos LLMs, tokens. Mutant plantea una estrategia explícita: full pass mientras entre en el tiempo aceptable; incremental sobre cambios cuando deje de entrar.',
     annotation: 'Incremental es un trade-off: acelera al mirar el working set, pero no detecta cambios indirectos.',
@@ -85,7 +285,7 @@ const slides: Slide[] = [
     claims: ['La estrategia incremental responde al tiempo de ida y vuelta aceptable para una persona.', 'Un full pass periódico compensa lo que `--since` no selecciona por cambios indirectos.'],
   },
   {
-    index: '07', section: 'Evidencia', minutes: 3, visual: 'evidence',
+    index: '17', section: 'Evidencia', minutes: 3, visual: 'evidence',
     title: 'Para hablar de coste, necesitamos datos de apps reales',
     copy: 'En lugar de basarnos en una demo, vamos a explorar Real World Rails: un corpus de más de 200 checkouts. Primero inventario estático; después un piloto pequeño, reproducible y atribuido a una versión concreta.',
     annotation: 'La charla puede mostrar investigación en progreso sin convertir una muestra pequeña en una verdad universal.',
@@ -93,7 +293,7 @@ const slides: Slide[] = [
     claims: ['Antes de comparar resultados, hay que registrar compatibilidad, baseline y configuración.', 'Una muestra honesta vale más que una estadística inflada.'],
   },
   {
-    index: '08', section: 'Piloto', minutes: 4, visual: 'pilot',
+    index: '18', section: 'Piloto', minutes: 3, visual: 'pilot',
     title: 'El piloto convierte reportes en datos, no en anécdotas',
     copy: 'Para cada mutante vivo guardaremos el sujeto, operador, ejecución, clasificación, evidencia y resolución. Solo contaremos un bug real cuando haya una confirmación revisable: un test, una corrección o una especificación explícita.',
     annotation: 'CSV para comparar y sesiones/reportes crudos para volver a leer el contexto. El formato machine-readable depende de la versión y edición de la herramienta.',
@@ -101,7 +301,7 @@ const slides: Slide[] = [
     claims: ['Un reporte de Mutant sin una taxonomía termina siendo ruido.', 'La reproducibilidad permite que la charla sea refutable y mejorable.'],
   },
   {
-    index: '09', section: 'LLMs', minutes: 3, visual: 'llm',
+    index: '19', section: 'LLMs', minutes: 3, visual: 'llm',
     title: 'Un LLM puede acelerar la lectura; no decidir el requerimiento',
     copy: 'Podemos pedirle a un LLM que explique el diff, encuentre tests relacionados y proponga una clasificación. Pero aceptar una simplificación o escribir un test es una decisión de producto, seguridad y dominio.',
     annotation: 'La IA no convierte una señal en verdad; puede reducir el coste de llegar a una decisión bien fundamentada.',
@@ -109,7 +309,7 @@ const slides: Slide[] = [
     claims: ['La trazabilidad de por qué aceptamos una decisión importa más que una respuesta fluida.', 'Los LLMs pueden ser un buen primer lector de mutantes, no el juez final.'],
   },
   {
-    index: '10', section: 'Adopción', minutes: 3, visual: 'adoption',
+    index: '20', section: 'Adopción', minutes: 3, visual: 'adoption',
     title: 'Vale la pena donde se cruzan criticidad, estabilidad y foco',
     copy: 'Empezaría por reglas de autorización, tenancy, límites, cálculos de dinero o cambios sensibles. Si la suite es flaky, no hay baseline o el coste supera la señal, primero hay trabajo previo que hacer.',
     annotation: 'No es una puerta de CI universal. Es una señal de alta fidelidad para zonas donde fallar cuesta más.',
@@ -117,7 +317,7 @@ const slides: Slide[] = [
     claims: ['Seguridad no requiere más tests en abstracto: requiere tests que fallen cuando una defensa se debilita.', 'Un buen rollout es selectivo, medible y revisable.'],
   },
   {
-    index: '11', section: 'Reflexión', minutes: 3, visual: 'reflection',
+    index: '21', section: 'Reflexión', minutes: 3, visual: 'reflection',
     title: 'Si la IA escribe más código, la escasez no será escribir',
     copy: 'El lugar interesante puede estar un nivel más arriba: herramientas que verifican, restringen y explican código generado. Mutation testing, complejidad, análisis estático y contraejemplos convierten velocidad en confianza calibrada.',
     annotation: 'Menos automatización que produce código sin verificar. Más metacódigo que nos ayuda a decidir si ese código merece confianza.',
@@ -169,7 +369,68 @@ function RubyCode({ code }: { code: string }) {
   });
 }
 
-function Diagram({ visual, coverageMode, setCoverageMode }: { visual: Visual; coverageMode: 'line' | 'semantic'; setCoverageMode: (mode: 'line' | 'semantic') => void }) {
+function RubyLab({ initialCode }: { initialCode: string }) {
+  const [code, setCode] = useState(initialCode);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'running' | 'error' | 'done'>('idle');
+  const [output, setOutput] = useState('');
+  const wasmModule = useRef<WebAssembly.Module | null>(null);
+  const stdout = useRef('');
+
+  const run = async () => {
+    setStatus(wasmModule.current ? 'running' : 'loading');
+    setOutput('');
+    stdout.current = '';
+
+    try {
+      const runtime = await import(/* @vite-ignore */ RUBY_WASM_API) as BrowserRubyRuntime;
+      if (!wasmModule.current) {
+        const response = await fetch(RUBY_WASM_BINARY);
+        if (!response.ok) throw new Error(`No se pudo descargar Ruby (${response.status})`);
+        try {
+          wasmModule.current = await WebAssembly.compileStreaming(response);
+        } catch {
+          wasmModule.current = await WebAssembly.compile(await response.arrayBuffer());
+        }
+      }
+
+      setStatus('running');
+      const { vm } = await runtime.DefaultRubyVM(wasmModule.current, {
+        consolePrint: {
+          stdout: (line) => { stdout.current += line; },
+          stderr: (line) => { stdout.current += line; },
+        },
+      });
+      const result = vm.eval(`begin
+${code}
+rescue Exception => error
+  "ERROR: #{error.class}: #{error.message}"
+end`);
+      const returned = result.toString();
+      setOutput([stdout.current.trim(), returned].filter(Boolean).join('\n'));
+      setStatus('done');
+    } catch (error) {
+      setOutput(error instanceof Error ? error.message : 'Ruby no pudo iniciar.');
+      setStatus('error');
+    }
+  };
+
+  const label = status === 'loading' ? 'Cargando Ruby 3.3…' : status === 'running' ? 'Ejecutando…' : 'Ejecutar Ruby';
+
+  return <section className="border border-[#9c1f31]/35 bg-[#fffdfb] p-4 shadow-[0_10px_30px_rgba(91,30,42,.06)]">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div><p className="font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#9c1f31]">Laboratorio ejecutable</p><p className="mt-1 text-xs leading-relaxed text-[#75555a]">Ruby 3.3 corre en esta pestaña mediante WebAssembly. Podés editar el ejemplo.</p></div>
+      <div className="flex gap-2"><Button size="sm" variant="ghost" onClick={() => { setCode(initialCode); setOutput(''); setStatus('idle'); }}>Restaurar</Button><Button size="sm" variant="secondary" disabled={status === 'loading' || status === 'running'} onClick={run}><Code2 /> {label}</Button></div>
+    </div>
+    <label className="mt-4 block"><span className="sr-only">Código Ruby ejecutable</span><textarea aria-label="Código Ruby ejecutable" className="min-h-48 w-full resize-y border border-[#6c2330]/20 bg-[#f8eeea] p-3 font-mono text-xs leading-5 text-[#42191f] outline-none focus:border-[#9c1f31] focus:ring-1 focus:ring-[#9c1f31]" onChange={(event) => setCode(event.target.value)} spellCheck={false} value={code} /></label>
+    <div aria-live="polite" className={`mt-3 border-l-2 px-3 py-2 font-mono text-xs leading-5 ${status === 'error' ? 'border-[#9c1f31] bg-[#fff0ef] text-[#9c1f31]' : 'border-[#6b3d7a] bg-[#f7f0f8] text-[#42191f]'}`}>
+      <span className="font-bold uppercase tracking-[.12em] text-[#75555a]">Salida</span>
+      <pre className="mt-1 whitespace-pre-wrap">{output || 'Todavía no se ejecutó.'}</pre>
+    </div>
+    <p className="mt-3 text-xs leading-relaxed text-[#75555a]">Cada ejecución crea una VM nueva: reproduce el aislamiento para la demo. El navegador no expone <code>fork</code>, así que el paso 08 ejecuta el cuerpo del “hijo” dentro de esa VM aislada.</p>
+  </section>;
+}
+
+function Diagram({ visual, step, coverageMode, setCoverageMode }: { visual: Visual; step?: ImperativeStep; coverageMode: 'line' | 'semantic'; setCoverageMode: (mode: 'line' | 'semantic') => void }) {
   const card = 'border border-[#6c2330]/20 bg-[#fffdfb] p-4 shadow-[0_10px_30px_rgba(91,30,42,.06)]';
   const label = 'font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#9c1f31]';
 
@@ -178,6 +439,24 @@ function Diagram({ visual, coverageMode, setCoverageMode }: { visual: Visual; co
   if (visual === 'coverage') return <div className={card}><div className="mb-5 flex gap-2"><button onClick={() => setCoverageMode('line')} className={`border px-3 py-1.5 text-xs font-semibold ${coverageMode === 'line' ? 'border-[#9c1f31] bg-[#9c1f31] text-[#fffaf6]' : 'border-[#6c2330]/20 text-[#75555a]'}`}>Line coverage</button><button onClick={() => setCoverageMode('semantic')} className={`border px-3 py-1.5 text-xs font-semibold ${coverageMode === 'semantic' ? 'border-[#9c1f31] bg-[#9c1f31] text-[#fffaf6]' : 'border-[#6c2330]/20 text-[#75555a]'}`}>Cobertura semántica</button></div><div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center"><div className="border border-[#6c2330]/15 bg-[#fffaf6] p-4"><p className={label}>Suite</p><p className="mt-2 font-mono text-sm text-[#42191f]">age: 17 → false<br />age: 19 → true</p></div><div className="mx-auto text-2xl text-[#9c1f31]">→</div><div className={`border p-4 transition-colors ${coverageMode === 'line' ? 'border-[#cfb5b8] bg-[#f8eeea]' : 'border-[#9c1f31] bg-[#fff5f4]'}`}><p className={label}>{coverageMode === 'line' ? 'Sabemos' : 'Todavía falta'}</p><p className="mt-2 text-sm leading-relaxed text-[#42191f]">{coverageMode === 'line' ? 'La línea se ejecutó sin explotar.' : '¿Qué pasa exactamente con age: 18?'}</p></div></div></div>;
 
   if (visual === 'mutation') return <div className={`${card} overflow-hidden`}><div className="grid gap-3 sm:grid-cols-4 sm:items-stretch"><div className="border border-[#6c2330]/15 p-3"><p className={label}>Subject</p><p className="mt-3 font-mono text-sm text-[#42191f]">Person#adult?</p></div><div className="border border-[#9c1f31] bg-[#fff5f4] p-3"><p className={label}>Operator</p><p className="mt-3 font-mono text-sm font-semibold text-[#9c1f31]">&gt;= → &gt;</p></div><div className="border border-[#6c2330]/15 p-3"><p className={label}>Hypothesis</p><p className="mt-3 text-sm text-[#42191f]">ejecutar tests</p><div className="mt-3 h-1 overflow-hidden bg-[#f4e3df]"><div className="h-full w-2/3 animate-pulse bg-[#9c1f31]" /></div></div><div className="border border-[#6c2330]/15 p-3"><p className={label}>Veredicto</p><p className="mt-3 text-sm font-semibold text-[#42191f]">killed <span className="text-[#9a7073]">/</span> alive</p></div></div></div>;
+
+  if (visual === 'imperative' && step) {
+    const stages = {
+      contract: ['Contrato', 'Citizen#adult?', '18 → true · 17 → false'],
+      location: ['Reflexión', 'instance_method', 'archivo + línea'],
+      source: ['Source', 'File.binread(path)', 'age >= 18'],
+      ast: ['Prism', 'ProgramNode → DefNode', 'solo adult?'],
+      point: ['Punto', 'CallNode(">=")', 'rango del token'],
+      replacement: ['Mutante', '>= → >', 'source alrededor intacto'],
+      patch: ['Runtime', 'eval(mutated)', '18 → false'],
+      killed: ['Aislamiento', 'fork + prueba de borde', 'killed'],
+      alive: ['Evidencia', 'sin prueba de borde', 'alive'],
+    } as const;
+    const [phase, operation, result] = stages[step];
+    return <div className={`${card} overflow-hidden`}><div className="flex items-center justify-between border-b border-[#6c2330]/15 pb-4"><p className={label}>Construcción imperativa</p><span className="font-mono text-xs text-[#9c1f31]">step {String(Object.keys(stages).indexOf(step) + 1).padStart(2, '0')}</span></div><div className="mt-4 grid gap-2 sm:grid-cols-3"><div className="border border-[#6c2330]/15 bg-[#fffaf6] p-3"><p className={label}>Entrada</p><p className="mt-3 text-sm font-semibold">{phase}</p></div><div className="border border-[#6c2330]/15 bg-[#fffdfb] p-3"><p className={label}>Una operación</p><p className="mt-3 font-mono text-sm font-semibold text-[#42191f]">{operation}</p></div><div className="border border-[#9c1f31] bg-[#fff5f4] p-3"><p className={label}>Observamos</p><p className="mt-3 font-mono text-sm font-semibold text-[#9c1f31]">{result}</p></div></div></div>;
+  }
+
+  if (visual === 'refactor') return <div className={`${card} overflow-hidden`}><p className={label}>Después de entender el flujo</p><div className="mt-4 grid gap-2 sm:grid-cols-2"><div className="border border-[#6c2330]/15 bg-[#fffaf6] p-3"><p className="font-mono text-xs text-[#9c1f31]">steps/01–09</p><p className="mt-3 text-sm font-semibold">variables, AST, source, fork</p><p className="mt-2 text-xs text-[#75555a]">mecánica visible</p></div><div className="border border-[#9c1f31] bg-[#fff5f4] p-3"><p className="font-mono text-xs text-[#9c1f31]">lib/mini_mutant</p><p className="mt-3 text-sm font-semibold">Subject, Discoverer, Runner</p><p className="mt-2 text-xs text-[#75555a]">la misma mecánica, con nombres</p></div></div></div>;
 
   if (visual === 'decision') return <div className="grid gap-3 sm:grid-cols-2"><div className="border border-[#9c1f31] bg-[#9c1f31] p-4 text-[#fffaf6]"><p className="font-mono text-[10px] uppercase tracking-[.14em] text-white/70">Alive mutation</p><p className="mt-2 text-xl font-semibold">La suite no refutó la hipótesis</p></div><div className="grid grid-cols-2 gap-3"><div className={card}><Check className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Agregar test</p><p className="mt-1 text-xs text-[#75555a]">el original importa</p></div><div className={card}><GitBranch className="size-4 text-[#9c1f31]" /><p className="mt-5 text-sm font-semibold">Aceptar mutante</p><p className="mt-1 text-xs text-[#75555a]">simplificar original</p></div></div></div>;
 
@@ -221,16 +500,16 @@ export default function Home() {
   const go = (direction: -1 | 1) => setActive((value) => Math.max(0, Math.min(slides.length - 1, value + direction)));
 
   return <main className="min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
-    <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
+    <header className="mx-auto flex max-w-[1800px] items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
       <div className="flex items-center gap-3"><span className="grid size-8 place-items-center bg-[#9c1f31] text-xs font-bold text-[#fffaf6]">M</span><div><p className="text-sm font-semibold tracking-tight">Mutation Testing en Ruby</p><p className="text-[10px] uppercase tracking-[.15em] text-[#75555a]">¿vale la pena?</p></div></div>
       <div className="flex items-center gap-2"><Button variant={!sourcesOpen && !presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => { setSourcesOpen(false); setPresenterMode(false); }}>Charla</Button><Button variant={!sourcesOpen && presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => { setSourcesOpen(false); setPresenterMode(true); }}><MonitorUp /> Presentador</Button><Button variant={sourcesOpen ? 'secondary' : 'ghost'} size="sm" onClick={() => setSourcesOpen(true)}>Fuentes</Button></div>
     </header>
 
-    <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)]">
+    <div className="mx-auto grid max-w-[1800px] grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)]">
       <nav className="border-b border-[#6c2330]/15 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Recorrido</p><div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">{slides.map((slide, index) => <button key={slide.index} onClick={() => { setSourcesOpen(false); setActive(index); }} className={`flex items-center gap-3 px-2 py-2 text-left transition ${!sourcesOpen && index === active ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#75555a] hover:bg-[#f4e3df] hover:text-[#42191f]'}`}><span className="font-mono text-xs">{slide.index}</span><span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span></button>)}</div><button onClick={() => setSourcesOpen(true)} className={`mt-4 flex w-full items-center gap-3 border-t border-[#6c2330]/15 px-2 pt-4 text-left text-sm font-medium transition ${sourcesOpen ? 'text-[#9c1f31]' : 'text-[#75555a] hover:text-[#42191f]'}`}><ExternalLink className="size-3" /> Fuentes y lecturas</button><p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]"><span className="block font-mono text-[#9c1f31]">35 min</span>de contenido + 5 min de preguntas</p></nav>
 
-      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-5xl">{sourcesOpen ? <SourcesLibrary /> : <><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
-        {!presenterMode ? <div className="grid gap-10 lg:grid-cols-[1.03fr_.97fr] lg:items-center"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
+      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-none">{sourcesOpen ? <SourcesLibrary /> : <><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
+        {!presenterMode ? <div className="grid gap-8 lg:grid-cols-[.82fr_1.18fr] lg:items-start xl:gap-14"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} step={current.step} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}{current.step && <RubyLab initialCode={runnableSteps[current.step]} key={current.index} />}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
         <footer className="mt-12 flex items-center justify-between border-t border-[#6c2330]/15 pt-5"><Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button><div className="hidden items-center gap-2 text-xs text-[#75555a] sm:flex"><CircleDot className="size-3 text-[#9c1f31]" /> Flechas para navegar · P para presentador</div><Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button></footer></>}
       </div></section>
     </div>
