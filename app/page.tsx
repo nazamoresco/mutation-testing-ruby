@@ -45,9 +45,9 @@ type BrowserRubyRuntime = {
 const RUBY_WASM_API = 'https://cdn.jsdelivr.net/npm/@ruby/wasm-wasi@2.10.1/dist/browser/+esm';
 const RUBY_WASM_BINARY = 'https://cdn.jsdelivr.net/npm/@ruby/3.3-wasm-wasi@2.10.1/dist/ruby+stdlib.wasm';
 
-const calculatorSource = `class Calculator
-  def positive?(number)
-    number > 0
+const calculatorSource = `class Citizen
+  def adult?(age)
+    age >= 18
   end
 end
 `;
@@ -57,31 +57,31 @@ const prismHelpers = `def nodes(node)
 end
 
 tree = Prism.parse(source).value
-definition = nodes(tree).find { |node| node.is_a?(Prism::DefNode) && node.name == :positive? }
-call = nodes(definition).find { |node| node.is_a?(Prism::CallNode) && node.message_loc.slice == ">" }
+definition = nodes(tree).find { |node| node.is_a?(Prism::DefNode) && node.name == :adult? }
+call = nodes(definition).find { |node| node.is_a?(Prism::CallNode) && node.message_loc.slice == ">=" }
 `;
 
 const runnableSteps: Record<ImperativeStep, string> = {
-  contract: `class Calculator
-  def positive?(number)
-    number > 0
+  contract: `class Citizen
+  def adult?(age)
+    age >= 18
   end
 end
 
-raise "1 should be positive" unless Calculator.new.positive?(1)
-raise "0 should not be positive" if Calculator.new.positive?(0)
-"contract: 1 → true · 0 → false"`,
+raise "18 should be adult" unless Citizen.new.adult?(18)
+raise "17 should not be adult" if Citizen.new.adult?(17)
+"contract: 18 → true · 17 → false"`,
   location: `source = <<~'RUBY'
 ${calculatorSource}RUBY
 
-Object.class_eval(source, "calculator.rb", 1)
-path, line = Calculator.instance_method(:positive?).source_location
+Object.class_eval(source, "citizen.rb", 1)
+path, line = Citizen.instance_method(:adult?).source_location
 "source_location → #{path}:#{line}"`,
   source: `source = <<~'RUBY'
 ${calculatorSource}RUBY
 
-Object.class_eval(source, "calculator.rb", 1)
-_path, line = Calculator.instance_method(:positive?).source_location
+Object.class_eval(source, "citizen.rb", 1)
+_path, line = Citizen.instance_method(:adult?).source_location
 "source (líneas #{line}–#{line + 2}):\\n#{source.lines[line - 1, 3].join}"`,
   ast: `require "prism"
 source = <<~'RUBY'
@@ -102,7 +102,7 @@ ${calculatorSource}RUBY
 
 ${prismHelpers}
 range = call.message_loc.start_offset...call.message_loc.end_offset
-mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
 "before: #{source.lines[2].strip}\\nafter:  #{mutated.lines[2].strip}"`,
   patch: `require "prism"
 source = <<~'RUBY'
@@ -110,21 +110,21 @@ ${calculatorSource}RUBY
 
 ${prismHelpers}
 range = call.message_loc.start_offset...call.message_loc.end_offset
-mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
-Object.class_eval(source, "calculator.rb", 1)
-Object.class_eval(mutated, "calculator.rb", 1)
-"runtime patch → positive?(0) is #{Calculator.new.positive?(0)}"`,
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+Object.class_eval(source, "citizen.rb", 1)
+Object.class_eval(mutated, "citizen.rb", 1)
+"runtime patch → adult?(18) is #{Citizen.new.adult?(18)}"`,
   killed: `require "prism"
 source = <<~'RUBY'
 ${calculatorSource}RUBY
 
 ${prismHelpers}
 range = call.message_loc.start_offset...call.message_loc.end_offset
-mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
-Object.class_eval(mutated, "calculator.rb", 1)
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+Object.class_eval(mutated, "citizen.rb", 1)
 
 begin
-  raise "0 became positive" if Calculator.new.positive?(0)
+  raise "18 is no longer adult" unless Citizen.new.adult?(18)
   "alive"
 rescue RuntimeError => error
   "killed → #{error.message}"
@@ -135,11 +135,11 @@ ${calculatorSource}RUBY
 
 ${prismHelpers}
 range = call.message_loc.start_offset...call.message_loc.end_offset
-mutated = source.byteslice(0, range.begin) + ">=" + source.byteslice(range.end..)
-Object.class_eval(mutated, "calculator.rb", 1)
+mutated = source.byteslice(0, range.begin) + ">" + source.byteslice(range.end..)
+Object.class_eval(mutated, "citizen.rb", 1)
 
-raise "1 should be positive" unless Calculator.new.positive?(1)
-"alive → 1 sigue siendo positivo y no hay una aserción para 0"`,
+raise "19 should be adult" unless Citizen.new.adult?(19)
+"alive → 19 sigue siendo adulto y no hay una aserción para 18"`,
 };
 
 const slides: Slide[] = [
@@ -172,9 +172,9 @@ const slides: Slide[] = [
   {
     index: '04', section: 'MiniMutant · 01', minutes: 0.5, visual: 'imperative', step: 'contract',
     title: 'Primero: una regla observable',
-    copy: 'No empezamos creando una abstracción. Ejecutamos `Calculator#positive?` y fijamos el contrato que queremos proteger: `1` es positivo; `0`, no.',
+    copy: 'No empezamos creando una abstracción. Ejecutamos `Citizen#adult?` y fijamos el contrato que queremos proteger: a los `18` es adulto; a los `17`, no.',
     annotation: 'Todo mutante solo tiene sentido frente a una observación de comportamiento.',
-    code: 'calculator = Calculator.new\nraise unless calculator.positive?(1)\nraise if calculator.positive?(0)',
+    code: 'citizen = Citizen.new\nraise unless citizen.adult?(18)\nraise if citizen.adult?(17)',
     presenter: ['Mostrá el método original y los dos resultados antes de hablar de AST o de mutantes.'],
     claims: ['La prueba de borde es una decisión de dominio, no un detalle de la herramienta.'],
   },
@@ -183,7 +183,7 @@ const slides: Slide[] = [
     title: 'El método nos lleva a su source',
     copy: 'La reflexión de Ruby nos entrega el archivo y la línea de inicio del método real. Ya tenemos una coordenada verificable; no un nombre inventado ni una búsqueda textual ambigua.',
     annotation: 'Esto es lo que después una clase llamará `Subject`; por ahora son dos variables.',
-    code: 'method = Calculator.instance_method(:positive?)\npath, line = method.source_location',
+    code: 'method = Citizen.instance_method(:adult?)\npath, line = method.source_location',
     presenter: ['Leé el valor de `path:line`: la siguiente operación trabaja sobre ese archivo exacto.'],
     claims: ['`source_location` conecta un método que existe en runtime con su implementación Ruby.'],
   },
@@ -193,60 +193,60 @@ const slides: Slide[] = [
     copy: 'Con esa coordenada leemos el archivo y mostramos las tres líneas del método. El programa que queremos mutar todavía es texto: conserva espacios, comentarios y todo el contexto alrededor.',
     annotation: 'Antes de cambiar nada, hacemos visible el material de la mutación.',
     code: 'source = File.binread(path)\nputs source.lines[line - 1, 3]',
-    presenter: ['Detenete en `number > 0`: ese carácter es la diferencia que queremos poner a prueba.'],
-    claims: ['Leer source no es parsearlo: todavía no sabemos qué `>` pertenece a qué expresión.'],
+    presenter: ['Detenete en `age >= 18`: esos dos caracteres son la diferencia que queremos poner a prueba.'],
+    claims: ['Leer source no es parsearlo: todavía no sabemos qué `>=` pertenece a qué expresión.'],
   },
   {
     index: '07', section: 'MiniMutant · 04', minutes: 0.5, visual: 'imperative', step: 'ast',
     title: 'Prism convierte texto en estructura',
-    copy: 'Prism parsea el archivo y recorremos el árbol hasta encontrar el `DefNode` de `positive?` que empieza en la línea conocida. Ahora delimitamos el método, no todo el archivo.',
+    copy: 'Prism parsea el archivo y recorremos el árbol hasta encontrar el `DefNode` de `adult?` que empieza en la línea conocida. Ahora delimitamos el método, no todo el archivo.',
     annotation: 'El AST no reemplaza el source: nos da una forma confiable de ubicar una parte de él.',
-    code: 'tree = Prism.parse(source).value\ndefinition = nodes(tree).find { |node|\n  node.is_a?(Prism::DefNode) && node.name == :positive?\n}',
+    code: 'tree = Prism.parse(source).value\ndefinition = nodes(tree).find { |node|\n  node.is_a?(Prism::DefNode) && node.name == :adult?\n}',
     presenter: ['Mostrá el salto: de un string completo a una única definición de método.'],
     claims: ['La selección por nombre y línea evita mutar otro método con el mismo operador.'],
   },
   {
     index: '08', section: 'MiniMutant · 05', minutes: 0.5, visual: 'imperative', step: 'point',
     title: 'Encontramos un punto, no una línea entera',
-    copy: 'Dentro de ese `DefNode`, buscamos el `CallNode` cuyo mensaje es `>`. Prism devuelve su rango de bytes: sabemos con precisión qué token es reemplazable.',
+    copy: 'Dentro de ese `DefNode`, buscamos el `CallNode` cuyo mensaje es `>=`. Prism devuelve su rango de bytes: sabemos con precisión qué token es reemplazable.',
     annotation: 'El mutation point es el operador y su rango; no “la línea cinco”.',
-    code: 'call = nodes(definition).find { |node|\n  node.is_a?(Prism::CallNode) && node.message_loc.slice == ">"\n}\nrange = call.message_loc',
+    code: 'call = nodes(definition).find { |node|\n  node.is_a?(Prism::CallNode) && node.message_loc.slice == ">="\n}\nrange = call.message_loc',
     presenter: ['Marcá que el rango señala un carácter, aunque la expresión tenga más código alrededor.'],
     claims: ['El AST guía una sustitución segura y acotada de source.'],
   },
   {
     index: '09', section: 'MiniMutant · 06', minutes: 0.5, visual: 'imperative', step: 'replacement',
     title: 'Construimos el mutante por rango',
-    copy: 'Cortamos el source antes y después del rango, e insertamos `>=`. El resto del archivo queda idéntico: no serializamos un AST nuevo ni necesitamos un unparser.',
+    copy: 'Cortamos el source antes y después del rango, e insertamos `>`. El resto del archivo queda idéntico: no serializamos un AST nuevo ni necesitamos un unparser.',
     annotation: 'Esta es la decisión didáctica central: AST-guided source mutation.',
-    code: 'mutated = source.byteslice(0, range.start_offset) +\n  ">=" + source.byteslice(range.end_offset..)',
-    presenter: ['Mostrá el before/after: `number > 0` se vuelve `number >= 0`.'],
+    code: 'mutated = source.byteslice(0, range.start_offset) +\n  ">" + source.byteslice(range.end_offset..)',
+    presenter: ['Mostrá el before/after: `age >= 18` se vuelve `age > 18`.'],
     claims: ['El cambio es pequeño a propósito: expresa una hipótesis semántica precisa.'],
   },
   {
     index: '10', section: 'MiniMutant · 07', minutes: 0.5, visual: 'imperative', step: 'patch',
     title: 'El source mutado redefine el método',
-    copy: 'Evaluamos el archivo mutado en runtime. El método cambia de verdad: ahora `positive?(0)` devuelve `true`. Tenemos un programa incorrecto, listo para desafiar a la suite.',
+    copy: 'Evaluamos el archivo mutado en runtime. El método cambia de verdad: ahora `adult?(18)` devuelve `false`. Tenemos un programa incorrecto, listo para desafiar a la suite.',
     annotation: 'Este paso es visible a propósito; todavía no aislamos el cambio.',
-    code: 'TOPLEVEL_BINDING.eval(mutated, path, 1)\nputs Calculator.new.positive?(0) # true',
-    presenter: ['Preguntá: ¿qué debería hacer una prueba que especifica el borde de cero?'],
+    code: 'TOPLEVEL_BINDING.eval(mutated, path, 1)\nputs Citizen.new.adult?(18) # false',
+    presenter: ['Preguntá: ¿qué debería hacer una prueba que especifica el borde de edad?'],
     claims: ['Una mutación no es un diff decorativo: cambia el comportamiento que ejecuta Ruby.'],
   },
   {
     index: '11', section: 'MiniMutant · 08', minutes: 0.5, visual: 'imperative', step: 'killed',
     title: 'Fork: el hijo recibe el mutante',
     copy: 'Aplicamos el mismo patch dentro de un proceso hijo y ejecutamos la aserción de borde. El hijo falla, informa `killed` y termina; el proceso padre conserva la implementación original.',
-    annotation: 'Isolation deja de ser vocabulario: se observa que el padre sigue respondiendo `false` para cero.',
-    code: 'fork do\n  eval(mutated, TOPLEVEL_BINDING, path, 1)\n  raise if Calculator.new.positive?(0)\nend # killed',
+    annotation: 'Isolation deja de ser vocabulario: se observa que el padre conserva `adult?(18) → true`.',
+    code: 'fork do\n  eval(mutated, TOPLEVEL_BINDING, path, 1)\n  raise unless Citizen.new.adult?(18)\nend # killed',
     presenter: ['Compará ambos procesos: hijo mutado, padre intacto.'],
     claims: ['Una aserción que falla mata al mutante.'],
   },
   {
     index: '12', section: 'MiniMutant · 09', minutes: 0.5, visual: 'imperative', step: 'alive',
     title: 'Sin el borde, el mismo mutante sobrevive',
-    copy: 'Ahora el hijo solo prueba que `1` es positivo. La mutación `>` → `>=` conserva ese resultado, la corrida termina limpia y el veredicto es `alive`.',
+    copy: 'Ahora el hijo solo prueba que a los `19` es adulto. La mutación `>=` → `>` conserva ese resultado, la corrida termina limpia y el veredicto es `alive`.',
     annotation: 'Alive no exige “agregar más tests”: primero pregunta si ese borde es un comportamiento requerido.',
-    code: 'raise unless Calculator.new.positive?(1)\n# no assertion for 0 → alive',
+    code: 'raise unless Citizen.new.adult?(19)\n# no assertion for 18 → alive',
     presenter: ['Volvé a la decisión: test faltante, simplificación o mutante equivalente.'],
     claims: ['Un vivo revela una hipótesis que la suite no logró refutar.'],
   },
@@ -442,13 +442,13 @@ function Diagram({ visual, step, coverageMode, setCoverageMode }: { visual: Visu
 
   if (visual === 'imperative' && step) {
     const stages = {
-      contract: ['Contrato', 'Calculator#positive?', '1 → true · 0 → false'],
+      contract: ['Contrato', 'Citizen#adult?', '18 → true · 17 → false'],
       location: ['Reflexión', 'instance_method', 'archivo + línea'],
-      source: ['Source', 'File.binread(path)', 'number > 0'],
-      ast: ['Prism', 'ProgramNode → DefNode', 'solo positive?'],
-      point: ['Punto', 'CallNode(">")', 'rango del token'],
-      replacement: ['Mutante', '> → >=', 'source alrededor intacto'],
-      patch: ['Runtime', 'eval(mutated)', '0 → true'],
+      source: ['Source', 'File.binread(path)', 'age >= 18'],
+      ast: ['Prism', 'ProgramNode → DefNode', 'solo adult?'],
+      point: ['Punto', 'CallNode(">=")', 'rango del token'],
+      replacement: ['Mutante', '>= → >', 'source alrededor intacto'],
+      patch: ['Runtime', 'eval(mutated)', '18 → false'],
       killed: ['Aislamiento', 'fork + prueba de borde', 'killed'],
       alive: ['Evidencia', 'sin prueba de borde', 'alive'],
     } as const;
@@ -500,16 +500,16 @@ export default function Home() {
   const go = (direction: -1 | 1) => setActive((value) => Math.max(0, Math.min(slides.length - 1, value + direction)));
 
   return <main className="min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
-    <header className="mx-auto flex max-w-7xl items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
+    <header className="mx-auto flex max-w-[1800px] items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
       <div className="flex items-center gap-3"><span className="grid size-8 place-items-center bg-[#9c1f31] text-xs font-bold text-[#fffaf6]">M</span><div><p className="text-sm font-semibold tracking-tight">Mutation Testing en Ruby</p><p className="text-[10px] uppercase tracking-[.15em] text-[#75555a]">¿vale la pena?</p></div></div>
       <div className="flex items-center gap-2"><Button variant={!sourcesOpen && !presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => { setSourcesOpen(false); setPresenterMode(false); }}>Charla</Button><Button variant={!sourcesOpen && presenterMode ? 'secondary' : 'ghost'} size="sm" onClick={() => { setSourcesOpen(false); setPresenterMode(true); }}><MonitorUp /> Presentador</Button><Button variant={sourcesOpen ? 'secondary' : 'ghost'} size="sm" onClick={() => setSourcesOpen(true)}>Fuentes</Button></div>
     </header>
 
-    <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)]">
+    <div className="mx-auto grid max-w-[1800px] grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)]">
       <nav className="border-b border-[#6c2330]/15 p-4 lg:min-h-[calc(100vh-73px)] lg:border-b-0 lg:border-r"><p className="mb-3 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Recorrido</p><div className="grid grid-cols-4 gap-1 sm:grid-cols-6 lg:grid-cols-1">{slides.map((slide, index) => <button key={slide.index} onClick={() => { setSourcesOpen(false); setActive(index); }} className={`flex items-center gap-3 px-2 py-2 text-left transition ${!sourcesOpen && index === active ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#75555a] hover:bg-[#f4e3df] hover:text-[#42191f]'}`}><span className="font-mono text-xs">{slide.index}</span><span className="hidden text-sm font-medium sm:inline lg:inline">{slide.section}</span></button>)}</div><button onClick={() => setSourcesOpen(true)} className={`mt-4 flex w-full items-center gap-3 border-t border-[#6c2330]/15 px-2 pt-4 text-left text-sm font-medium transition ${sourcesOpen ? 'text-[#9c1f31]' : 'text-[#75555a] hover:text-[#42191f]'}`}><ExternalLink className="size-3" /> Fuentes y lecturas</button><p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]"><span className="block font-mono text-[#9c1f31]">35 min</span>de contenido + 5 min de preguntas</p></nav>
 
-      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-5xl">{sourcesOpen ? <SourcesLibrary /> : <><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
-        {!presenterMode ? <div className="grid gap-10 lg:grid-cols-[1.03fr_.97fr] lg:items-center"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} step={current.step} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}{current.step && <RubyLab initialCode={runnableSteps[current.step]} key={current.index} />}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
+      <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12"><div className="absolute right-[-10%] top-[-15%] size-[440px] rounded-full border border-[#9c1f31]/10" aria-hidden="true" /><div className="relative mx-auto max-w-none">{sourcesOpen ? <SourcesLibrary /> : <><div className="mb-8 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.15em] text-[#9c1f31]"><span>{current.section}</span><span>{current.index} / {String(slides.length).padStart(2, '0')}</span></div>
+        {!presenterMode ? <div className="grid gap-8 lg:grid-cols-[.82fr_1.18fr] lg:items-start xl:gap-14"><div><h1 className="max-w-3xl text-4xl font-semibold tracking-[-.055em] text-[#2a171a] sm:text-6xl lg:text-7xl">{current.title}</h1><p className="mt-7 max-w-2xl text-xl leading-relaxed text-[#75555a] sm:text-2xl">{current.copy}</p><p className="mt-9 max-w-xl border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">{current.annotation}</p></div><div className="space-y-4"><Diagram visual={current.visual} step={current.step} coverageMode={coverageMode} setCoverageMode={setCoverageMode} />{current.code && <div className="border border-[#6c2330]/15 bg-[#f8eeea] p-5"><div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.14em] text-[#75555a]"><Code2 className="size-4 text-[#9c1f31]" /> Ejemplo</div><pre className="whitespace-pre-wrap font-mono text-[13px] leading-6"><RubyCode code={current.code} /></pre></div>}{current.step && <RubyLab initialCode={runnableSteps[current.step]} key={current.index} />}</div></div> : <div className="grid gap-6 lg:grid-cols-[1.12fr_.88fr]"><div className="border border-[#9c1f31]/50 bg-[#fffdfb] p-6 sm:p-9"><div className="mb-9 flex items-center justify-between gap-4 text-sm font-semibold text-[#9c1f31]"><span className="flex items-center gap-2"><MonitorUp className="size-4" /> Modo presentador</span><span className="font-mono text-xs">{formatDuration(current.minutes)} · {formatElapsed(minutesBefore)}–{formatElapsed(minutesBefore + current.minutes)}</span></div><h1 className="text-3xl font-semibold tracking-[-.04em] sm:text-5xl">{current.title}</h1><p className="mt-4 text-xs font-mono text-[#75555a]">Plan de charla: 35 min de contenido + 5 min de preguntas</p><div className="mt-9 border-t border-[#6c2330]/15 pt-6"><p className="mb-4 text-[10px] font-bold uppercase tracking-[.15em] text-[#75555a]">Lo que conviene decir</p><ul className="space-y-4">{current.presenter.map((item) => <li key={item} className="flex gap-3 text-lg leading-relaxed text-[#42191f]"><Check className="mt-1 size-4 shrink-0 text-[#9c1f31]" />{item}</li>)}</ul></div></div><aside className="border border-[#6c2330]/15 bg-[#f8eeea] p-6 sm:p-8"><div className="mb-7 flex items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-[#9c1f31]" /> Afirmaciones para comentar</div><ol className="space-y-4">{current.claims.map((claim, index) => <li key={claim} className="border-l border-[#6c2330]/20 pl-4 text-base leading-relaxed text-[#75555a]"><span className="mr-2 font-mono text-xs text-[#9c1f31]">0{index + 1}</span>{claim}</li>)}</ol><div className="mt-10 border-t border-[#6c2330]/15 pt-6 text-sm leading-relaxed text-[#75555a]">{current.annotation}</div></aside></div>}
         <footer className="mt-12 flex items-center justify-between border-t border-[#6c2330]/15 pt-5"><Button variant="ghost" size="sm" onClick={() => go(-1)} disabled={active === 0}><ArrowLeft /> Anterior</Button><div className="hidden items-center gap-2 text-xs text-[#75555a] sm:flex"><CircleDot className="size-3 text-[#9c1f31]" /> Flechas para navegar · P para presentador</div><Button variant="secondary" size="sm" onClick={() => go(1)} disabled={active === slides.length - 1}>Siguiente <ArrowRight /></Button></footer></>}
       </div></section>
     </div>
