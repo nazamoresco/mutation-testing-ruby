@@ -5,3 +5,4 @@ project,rwr-historical-8,2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmi
 project,rwr-historical-8,2026-09-10,01a08af9-9e81-74a8-b2ed-34d986ea688a,trailmix,focused_validation,light,neutral,1,1,0,0,Temporary approved specification; not comparable with the whole-application cohort
 project,rwr-historical-8,2026-09-10,01a08bcb-9aef-7213-aaa5-6419bafaaf01,speakerline,whole_application,light,evil,1167,573,594,0,Same Mutant profile as Trailmix; alive rows are unreviewed and not bugs
 project,rwr-historical-8,2026-09-10,01a08bcb-9aef-7213-aaa5-6419bafaaf01,speakerline,whole_application,light,neutral,39,39,0,0,Neutral result reported separately from semantic mutation signal
+project,historical-bug-fix-pilot,2026-09-21,not_persisted,huginn,historical_bug_fix_subject,light,evil,88,1,87,0,Valid single-subject historical probe; no global aggregation or bug claim

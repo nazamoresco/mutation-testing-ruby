@@ -101,6 +101,12 @@ El primer padre seleccionado, `fe300ef5087f`, aprobó dos baselines completos en
 su entorno histórico (Ruby 3.2, Rails 6.1.7.3 y RSpec): 1.670 ejemplos y 0
 fallas en cada pasada, con semillas 52735 y 22891. La receta, los intentos
 técnicos excluidos y los tiempos están en
-`baselines/huginn-fe300ef5087f-2026-09-20.md`. Puede avanzar a una validación
-temporal de Mutant sobre un único sujeto; no se debe ejecutar una comparación
-completa hasta validar carga, selección de tests y aislamiento de la base.
+`baselines/huginn-fe300ef5087f-2026-09-20.md`.
+
+La primera sonda de Mutant ya validó carga y selección para
+`JobsHelper#agent_from_job`: 1 sujeto, 5 tests seleccionados, 88 mutaciones, 1
+killed, 87 alive y 0 timeouts. Se registra como `analysis_level=project` en el
+cohort separado `historical-bug-fix-pilot`; no constituye evidencia de bugs ni
+una comparación entre grupos. El informe es
+`mutant-runs/huginn-jobs-helper-agent-from-job-2026-09-21.md`. El siguiente
+paso es baselinar y sondear un control en su propio padre pre-fix.

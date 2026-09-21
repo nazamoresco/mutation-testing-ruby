@@ -25,7 +25,7 @@ En aplicaciones Rails reales, ¿cuándo aporta valor ejecutar mutation testing y
 - Speakerline pasó dos baselines (66 ejemplos, 0 fallas) y la corrida completa de Mutant con el perfil `light`: 39 sujetos, 1.206 mutaciones, 612 killed, 594 alive y 0 timeouts en 365,61 s. Los 594 vivos quedan `unreviewed`, no son bugs. Nueve sujetos sin tests seleccionados explican 237 vivos. El detalle está en `research/mutant-runs/speakerline-full-2026-09-10.md`.
 - Chatwoot queda descartado del estudio histórico: el padre `d3e4ff2dc1e2` reprodujo dos veces una única falla de `AgentBuilder` en suite completa (6.769 ejemplos, 1 falla, 67 pendientes), aunque el ejemplo pasa aislado. Su primer intento había sido inválido por falta de `pnpm`/Vite. Estado `baseline_flaky`; no ejecutar Mutant. El detalle está en `research/baselines/chatwoot-d3e4ff2dc1e2-2026-09-14.md`.
 - Foodsoft queda descartado del estudio histórico: el padre `a8d5cbc8dbdc` no completó un baseline. La receta aislada corrigió la protección de DatabaseCleaner y añadió Chromium para Capybara, pero la suite se bloqueó después de los specs de sincronización de proveedores sin actividad de CPU ni navegador. Estado `baseline_failed`; no ejecutar Mutant. El detalle está en `research/baselines/foodsoft-a8d5cbc8dbdc-2026-09-15.md`.
-- Huginn aprobó el baseline histórico del padre `fe300ef5087f`: dos pasadas completas de RSpec verdes, ambas con 1.670 ejemplos y 0 fallas (semillas 52735 y 22891). El runner aislado usa Ruby 3.2, Rails 6.1.7.3, PostgreSQL 16, Chromium/ChromeDriver 153 y un montaje Git de sólo lectura. Los intentos de infraestructura anteriores se excluyeron. El detalle está en `research/baselines/huginn-fe300ef5087f-2026-09-20.md`; ahora es elegible para validar Mutant sobre un solo sujeto del manifiesto.
+- Huginn aprobó el baseline histórico del padre `fe300ef5087f`: dos pasadas completas de RSpec verdes, ambas con 1.670 ejemplos y 0 fallas (semillas 52735 y 22891). El runner aislado usa Ruby 3.2, Rails 6.1.7.3, PostgreSQL 16, Chromium/ChromeDriver 153 y un montaje Git de sólo lectura. Los intentos de infraestructura anteriores se excluyeron. La primera sonda válida de Mutant sobre `JobsHelper#agent_from_job` generó 88 mutaciones (1 killed, 87 alive, 0 timeouts); está aislada como `project` en `historical-bug-fix-pilot`, sin agregado global ni claim de bug. El detalle está en `research/mutant-runs/huginn-jobs-helper-agent-from-job-2026-09-21.md`.
 
 ## Material existente
 
@@ -159,12 +159,13 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
 
 - Huginn aprobó la puerta histórica de reproducibilidad: el padre
   `fe300ef5087f` pasó dos suites RSpec completas (1.670 ejemplos, 0 fallas en
-  cada una). La próxima acción es validar un bootstrap temporal de Mutant en
-  un único sujeto resuelto y comprobar selección de tests antes de cualquier
-  corrida comparativa o agregación.
+  cada una). La sonda de `JobsHelper#agent_from_job` ya validó el bootstrap de
+  Mutant con 1 sujeto y 5 tests seleccionados; sus 87 vivos están sin
+  clasificación y no son bugs. Falta preparar un control con su propio baseline
+  pre-fix antes de comparar grupos.
 
-Próximo paso histórico: construir un bootstrap temporal de Huginn que cargue
-Rails, mantenga la base aislada y enumere un único sujeto resuelto del
-manifiesto. Validar primero sujetos y tests seleccionados antes de ejecutar
-Mutant sobre una región `bug_fix` o un control. No publicar ni modificar
-proyectos de terceros.
+Próximo paso histórico: elegir el control automático más comparable, validar
+dos baselines de su padre pre-fix y repetir una sonda con la receta temporal de
+Huginn. Sólo entonces comparar `bug_fix` contra `nonfix_control`, manteniendo
+las filas `project` separadas de cualquier agregado `global`. No publicar ni
+modificar proyectos de terceros.
