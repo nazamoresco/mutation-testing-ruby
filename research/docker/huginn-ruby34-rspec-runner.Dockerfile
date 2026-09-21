@@ -1,4 +1,4 @@
-FROM ruby:3.4-bookworm
+FROM ruby:3.4-trixie
 
 ENV BUNDLE_PATH=/gems \
     BUNDLE_WITHOUT="" \
