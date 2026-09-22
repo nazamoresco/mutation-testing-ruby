@@ -175,19 +175,23 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   se rechazó por no ofrecer todavía un control de método comparable en la misma
   ventana. Las conclusiones de corte están en `EXPERIMENT-CONCLUSIONS.md`.
 
-- Camaleon CMS es el próximo par compatible: fix
-  `CamaleonCms::Metas#get_meta` (`da1209dc`) y control
-  `PluginRoutes#all_enabled_plugins` (`c92a542`), ambos Ruby 3.4.9 y Rails
-  8.1.3.1. Mutant/Mutant-RSpec 0.17.0, perfil light, un worker y timeout 60 s
-  quedan fijados para ambos; falta únicamente la puerta de dos baselines.
-
 - Camaleon CMS no superó esa puerta: su baseline nativo exige Chrome 125 y
   Selenium Manager no lo soporta en Linux arm64. Se documentó en
-  `baselines/camaleon-da1209dc-2026-09-22.md`; no ejecutar Mutant ni alterar
-  tests para forzar el par.
+  `baselines/camaleon-da1209dc-2026-09-22.md`; `apps.csv` queda normalizado a
+  `baseline_status=failed`. No ejecutar Mutant ni alterar tests para forzar el
+  par.
 
-Próximo paso histórico: elegir el control automático más comparable, validar
-dos baselines de su padre pre-fix y repetir una sonda con la receta temporal de
-Huginn. Sólo entonces comparar `bug_fix` contra `nonfix_control`, manteniendo
-las filas `project` separadas de cualquier agregado `global`. No publicar ni
+- El cribado estático posterior cubrió las 192 entradas `found` y `not_run`
+  (las 15 restantes siguen sin acceso en inventario), sin ejecutar
+  aplicaciones. Cinco proyectos tienen al menos un sujeto automático de fix y
+  uno de control: coursemology2, dev.to, osem, postal y timeoverflow. Esos
+  cinco son candidatos, no pares válidos: les falta seleccionar métodos
+  comparables y aprobar la celda de compatibilidad y los baselines. El embudo,
+  exclusiones y manifiestos están en `HISTORICAL-PAIR-SCREENING.md`,
+  `historical-pair-candidates.csv` y `bug-fix-manifests/*-static-screen.csv`.
+
+Próximo paso histórico: dentro de los cinco candidatos estáticos, elegir un
+fix/control de método comparable y fijar la misma celda de runtime. Sólo
+después validar dos baselines de cada padre y repetir las sondas Mutant, con
+filas `project` separadas de cualquier agregado `global`. No publicar ni
 modificar proyectos de terceros.
