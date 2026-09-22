@@ -56,8 +56,13 @@ excluyentes por el orden de la puerta; no describen defectos de los proyectos.
 | postal | 7 / 10 | `Postal#logger` | `Postal#logger` | Mejor señal estática inicial: el primer fix y control resuelven al mismo sujeto. |
 | timeoverflow | 2 / 4 | `CategoriesHelper#all_categories` | `PetitionsController#update` | Candidato; métodos aún no equiparados. |
 
-`diaspora` y `libraries.io` superaron la puerta de historial pero no resolvieron
-un sujeto automático de fix y por eso no entran en estos cinco. `test_track`
+`diaspora` y `libraries.io` superaron la puerta de historial. Se revisaron
+después como reemplazos: Diaspora tiene un control de inicializador compatible
+en runtime, pero el fix es una llamada de nivel superior y no un método Ruby
+direccionable por Mutant. Libraries.io sí ofrece `PackageManager::Maven.mapping`
+en ambos lados y especificaciones focales, pero el control corre Ruby 3.1.5 /
+Rails 7.0.8.1 frente a Ruby 3.2.5 / Rails 7.1.5 del fix. Ambos quedan excluidos
+del contraste causal, no catalogados como fallos de baseline. `test_track`
 también la superó mecánicamente, pero una revisión previa ya documentó que no
 tiene un control de método comparable; sigue excluido.
 
