@@ -78,6 +78,14 @@ configuración y alcance.
 
 ## Operadores y comparabilidad
 
+Para cualquier contraste histórico `fix` versus `control`, una etiqueta común
+de cohorte no alcanza. Antes de ejecutar Mutant, ambos snapshots deben tener
+una `compatibility_cell` idéntica: aplicación, versión exacta de Ruby, Bundler,
+Rails, Mutant, Mutant-RSpec, integración de tests, perfil de operadores,
+workers y timeout. Además, cada lado debe aprobar dos baselines verdes y
+resolver un sujeto. `research/pair-compatibility.csv` es la puerta de entrada;
+una celda distinta excluye el par de estimaciones de efecto y de agregados.
+
 Trailmix se ejecutó con el perfil `light`: su JSON contiene 2.987 resultados
 `evil` y 111 `neutral`. Por eso aún no permite afirmar cómo se comportan otros
 operadores. Antes de la segunda app se hará una sonda de capacidades de la misma

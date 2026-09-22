@@ -1,0 +1,3 @@
+app_id,fix_commit,fix_parent,ruby_version_at_fix_parent,eligible_fix_subject,control_window_status,screening_decision,notes
+test_track,81a8c5bca8d43d0d42219d473a127536d6fdce89,207ca071880c569ea18a36cf96bb049b48263435,3.4.8,not_resolved,no_comparable_method_control_found,rejected_for_now,The conventional fix only changes a Datadog initializer condition; nearby post-Ruby-3.4 commits have no comparable resolved nonfix method subject
+camaleon_cms,c2c8cc597610e66f14489f12654f5caa3c4977e4,da1209dcad732f8fdd50b50bc515921c895f949b,3.4.9,CamaleonCms::Metas#get_meta,PluginRoutes#all_enabled_plugins at c92a542b5b8e9d70802606a277d4c6fa14ecc387,selected_pending_baselines,Fix and control snapshots share Ruby 3.4.9 and Rails 8.1.3.1; Mutant 0.17.0 will be pinned for both

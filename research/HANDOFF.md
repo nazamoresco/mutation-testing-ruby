@@ -169,6 +169,18 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   killed, 10 alive, 0 timeouts). La diferencia Ruby/Mutant con el fix impide
   estimar un efecto fix-versus-control; las filas siguen sólo a nivel project.
 
+- La compatibilidad ahora es una puerta explícita en
+  `pair-compatibility.csv`: el par Huginn quedó `excluded_from_effect_estimate`.
+  Test Track fue revisado estáticamente como posible reemplazo Ruby 3.4.8, pero
+  se rechazó por no ofrecer todavía un control de método comparable en la misma
+  ventana. Las conclusiones de corte están en `EXPERIMENT-CONCLUSIONS.md`.
+
+- Camaleon CMS es el próximo par compatible: fix
+  `CamaleonCms::Metas#get_meta` (`da1209dc`) y control
+  `PluginRoutes#all_enabled_plugins` (`c92a542`), ambos Ruby 3.4.9 y Rails
+  8.1.3.1. Mutant/Mutant-RSpec 0.17.0, perfil light, un worker y timeout 60 s
+  quedan fijados para ambos; falta únicamente la puerta de dos baselines.
+
 Próximo paso histórico: elegir el control automático más comparable, validar
 dos baselines de su padre pre-fix y repetir una sonda con la receta temporal de
 Huginn. Sólo entonces comparar `bug_fix` contra `nonfix_control`, manteniendo
