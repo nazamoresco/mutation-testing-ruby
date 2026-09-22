@@ -53,3 +53,8 @@ El siguiente experimento no debe aumentar el número de aplicaciones todavía.
 Debe seleccionar pares que pasen la celda de compatibilidad y, recién entonces,
 ejecutar la misma receta para cada lado y contrastar los mutantes afectados por
 el diff del fix.
+
+Camaleon CMS fue el primer par que pasó la compatibilidad estática, pero falló
+su baseline nativo por una dependencia de Chrome 125 no disponible en Linux
+arm64. Se conserva como evidencia de viabilidad y no entra en Mutant ni en el
+contraste histórico.

@@ -181,6 +181,11 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   8.1.3.1. Mutant/Mutant-RSpec 0.17.0, perfil light, un worker y timeout 60 s
   quedan fijados para ambos; falta únicamente la puerta de dos baselines.
 
+- Camaleon CMS no superó esa puerta: su baseline nativo exige Chrome 125 y
+  Selenium Manager no lo soporta en Linux arm64. Se documentó en
+  `baselines/camaleon-da1209dc-2026-09-22.md`; no ejecutar Mutant ni alterar
+  tests para forzar el par.
+
 Próximo paso histórico: elegir el control automático más comparable, validar
 dos baselines de su padre pre-fix y repetir una sonda con la receta temporal de
 Huginn. Sólo entonces comparar `bug_fix` contra `nonfix_control`, manteniendo
