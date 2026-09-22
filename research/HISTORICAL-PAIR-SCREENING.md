@@ -41,6 +41,11 @@ No quedaron errores de lectura de GitHub después de corregir el parser de URLs
 con puntos en el nombre del repositorio. Los 15 accesos no disponibles son el
 límite heredado del inventario, no fallas de esta corrida.
 
+El primer motivo que excluyó a los 149 por metadata fue Ruby menor o no
+declarado como compatible (63), licencia no clara (43), ausencia de RSpec (40)
+o Rails menor/no declarado como compatible (3). Estas categorías son
+excluyentes por el orden de la puerta; no describen defectos de los proyectos.
+
 ## Cinco candidatos para la puerta de compatibilidad
 
 | Proyecto | Sujetos automáticos fix/control | Primer sujeto fix | Primer control | Lectura |
@@ -60,6 +65,21 @@ Los manifiestos derivados por proyecto están en
 `research/bug-fix-manifests/*-static-screen.csv`. El registro fila a fila de
 todo el universo cubierto está en `research/historical-pair-candidates.csv`.
 
+## Inicio de los cinco candidatos
+
+La revisión de los cinco métodos queda fijada en
+`research/historical-pair-shortlist.csv`. `postal` es el primer candidato para
+revisión de la celda de runtime: el fix y el control resuelven
+`Postal#logger`; sus padres son adyacentes y el diff entre ellos cambia sólo
+`lib/postal/config.rb`, por lo que mantiene sin drift estático la declaración
+Ruby 3.4.6/Rails 7.1.6. Esto no reemplaza la puerta de runtime ni autoriza una
+ejecución.
+
+Los otros cuatro permanecen como candidatos, pero requieren seleccionar un
+control de método comparable: Coursemology2 mezcla controlador y concern,
+dev.to renderizado y mailer, OSEM dos capas de autorización y TimeOverflow
+modelo y controlador. Ninguno avanza a baseline hasta resolver esa diferencia.
+
 ## Revisión de la cola de la cohorte vigente
 
 La cola de viabilidad `rwr-historical-8` no debe confundirse con esta cohorte
@@ -76,6 +96,16 @@ no pasan la primera puerta:
 Esto no cambia su estado en la cohorte de viabilidad general: sólo indica que
 no son el siguiente paso eficiente para el contraste histórico homogéneo.
 
+## Cohortes separadas
+
+La cohorte general `rwr-historical-8` responde otra pregunta: viabilidad y
+coste de usar Mutant en ocho aplicaciones Rails de épocas, frameworks y
+complejidad diversa. Incluye corridas completas válidas, bloqueos de baseline y
+validaciones focalizadas; no exige commits convencionales ni compara fixes con
+controles. La cohorte de pares históricos parte de los cinco candidatos de
+esta nota y sólo medirá contraste `bug_fix`/`nonfix_control` cuando ambas
+partes compartan una celda exacta y pasen baselines.
+
 ## Qué falta antes de cualquier ejecución
 
 El número utilizable hoy es **cinco candidatos estáticos**, no cinco pares
@@ -84,4 +114,3 @@ paso manual y todavía estático es seleccionar un fix y un control comparables
 en tamaño y superficie. Recién después se fijará una celda idéntica de Ruby,
 Bundler, Rails, Mutant, integración, perfil de operadores, worker y timeout;
 ambos padres deberán pasar dos baselines verdes antes de ejecutar Mutant.
-

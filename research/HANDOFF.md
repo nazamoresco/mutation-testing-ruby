@@ -190,6 +190,13 @@ Para la charla, mostrar el flujo, la muestra, sus límites y 1–2 decisiones co
   exclusiones y manifiestos están en `HISTORICAL-PAIR-SCREENING.md`,
   `historical-pair-candidates.csv` y `bug-fix-manifests/*-static-screen.csv`.
 
+- La revisión inicial de los cinco quedó registrada en
+  `historical-pair-shortlist.csv`: Postal es el primer candidato para revisar
+  la celda de runtime, ya que su fix/control resuelven `Postal#logger` y sus
+  padres adyacentes no alteran las declaraciones Ruby 3.4.6/Rails 7.1.6.
+  Coursemology2, dev.to, OSEM y TimeOverflow requieren antes un control de
+  método comparable; no se inició ningún baseline.
+
 Próximo paso histórico: dentro de los cinco candidatos estáticos, elegir un
 fix/control de método comparable y fijar la misma celda de runtime. Sólo
 después validar dos baselines de cada padre y repetir las sondas Mutant, con
