@@ -114,3 +114,22 @@ paso manual y todavía estático es seleccionar un fix y un control comparables
 en tamaño y superficie. Recién después se fijará una celda idéntica de Ruby,
 Bundler, Rails, Mutant, integración, perfil de operadores, worker y timeout;
 ambos padres deberán pasar dos baselines verdes antes de ejecutar Mutant.
+
+## Resolución posterior de candidatos — 2026-09-22
+
+La revisión de métodos corrigió un límite del resolvedor automático: los
+métodos definidos con `class << self` son singleton (`.`), no instancia (`#`).
+Esta corrección redujo la cola de manera honesta:
+
+| Proyecto | Decisión | Motivo |
+| --- | --- | --- |
+| CourseMology2 | Excluido | Sus controles del mismo método usan Rails 6.0.6.1 frente a Rails 8.1.3.1 del fix. |
+| OSEM | Excluido | El control de autorización más próximo usa Ruby/Rails/RSpec-Rails distintos. |
+| TimeOverflow | Excluido | Los controles de categoría comparables son de Ruby 2.6/Rails 6.1; el control moderno es de otra superficie. |
+| Postal | Excluido del efecto | Las cuatro suites y dos sondas fueron válidas, pero el fix cambia `Postal.process_name` y el control `Postal.logger`. |
+| dev.to | Candidato condicionado | `DetailsTag#render` y `ColTag#render` son métodos `Liquid::Block#render` comparables; Ruby/Rails/RSpec coinciden y sólo hay drift de Pry que debe normalizarse. |
+
+Por tanto, dev.to es el único siguiente candidato para preparar una celda de
+runtime común. Los resultados focalizados de Postal siguen registrados como
+viabilidad de Mutant a nivel proyecto, pero no se agregan como evidencia de
+prevención de bugs.
