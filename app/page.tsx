@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 type Visual =
   | 'welcome'
   | 'history'
+  | 'ruby-tools'
   | 'survey'
   | 'architecture'
   | 'imperative'
@@ -90,17 +91,62 @@ const calculatorSource = `class Citizen
 end
 `;
 
-const citizenTestSource = `load "citizen.rb"
+const tinyTestSource = `module TinyTest
+  class AssertionFailed < StandardError; end
 
-def run_tests
-  citizen = Citizen.new
-  raise "19 should be adult" unless citizen.adult?(19)
-  raise "17 should not be adult" if citizen.adult?(17)
+  module Assertions
+    def assert(value, message = "expected a truthy value")
+      raise AssertionFailed, message unless value
+    end
 
-  "2 tests · 2 passed"
+    def refute(value, message = "expected a falsy value")
+      raise AssertionFailed, message if value
+    end
+  end
+
+  class Test
+    include Assertions
+
+    class << self
+      attr_reader :last_report
+    end
+
+    def self.run
+      tests = instance_methods(false).grep(/^test_/)
+      failures = tests.filter_map do |name|
+        new.public_send(name)
+        nil
+      rescue AssertionFailed => error
+        "#{name}: #{error.message}"
+      end
+
+      @last_report = "#{tests.length} tests · #{tests.length - failures.length} passed"
+      puts @last_report
+      failures.each { |failure| puts failure }
+      failures.empty?
+    end
+  end
+end`;
+
+const citizenTestSource = `load "tiny_test.rb"
+load "citizen.rb"
+
+class CitizenTest < TinyTest::Test
+  def test_nineteen_is_adult
+    assert Citizen.new.adult?(19)
+  end
+
+  def test_seventeen_is_not_adult
+    refute Citizen.new.adult?(17)
+  end
 end
 
-run_tests`;
+def run_tests
+  CitizenTest.run
+end
+
+run_tests
+CitizenTest.last_report`;
 
 const subjectSource = `module MiniMutant
   class Subject
@@ -225,6 +271,7 @@ const inserterSource = `module MiniMutant
   class Inserter
     def self.with(subject, ruby)
       original = subject.owner.instance_method(subject.name)
+      # Keep source_location and backtraces aligned with the original method.
       subject.owner.class_eval(ruby, subject.path, subject.line)
       yield
     ensure
@@ -238,8 +285,7 @@ const runnerSource = `module MiniMutant
     def self.call(subject:, mutation:)
       ruby = Deparser.call(mutation.ast)
       Inserter.with(subject, ruby) do
-        yield
-        [:alive, nil]
+        yield ? [:alive, nil] : [:killed, "test suite failed"]
       end
     rescue RuntimeError => error
       [:killed, error.message]
@@ -311,13 +357,17 @@ load "mini_mutant/subject.rb"
 
 subject = MiniMutant::Subject.new(owner: Citizen, name: :adult?)
 "subject → Citizen#adult? @ #{subject.path}:#{subject.line}"`,
-  source: `load "citizen.rb"
+  source: `require "json"
+load "citizen.rb"
 load "mini_mutant/subject.rb"
 load "mini_mutant/source_file.rb"
 
 subject = MiniMutant::Subject.new(owner: Citizen, name: :adult?)
 source_file = MiniMutant::SourceFile.load(subject.path)
-"source → #{source_file.source.bytesize} bytes; AST → #{source_file.ast.class}"`,
+
+${astPayloadRuby}
+
+"__AST__#{JSON.generate(ast_payload(source_file.ast))}"`,
   ast: `require "json"
 load "citizen.rb"
 load "mini_mutant/subject.rb"
@@ -331,8 +381,12 @@ definition = MiniMutant::MethodFinder.call(source_file, subject)
 ${astPayloadRuby}
 
 "__AST__#{JSON.generate(ast_payload(definition))}"`,
-  point: `${preparation}
-"mutation point → #{point.node.class}(#{point.node.name.inspect}) → #{point.replacement.inspect}"`,
+  point: `require "json"
+${preparation}
+
+${astPayloadRuby}
+
+"__AST__#{JSON.generate(ast_payload(original))}"`,
   replacement: `require "json"
 ${mutationPreparation}
 
@@ -415,17 +469,39 @@ const slides: Slide[] = [
   },
   {
     index: '03',
+    section: 'Herramientas Ruby',
+    minutes: 1.5,
+    visual: 'ruby-tools',
+    title: 'Mutant es la referencia en Ruby, pero ya no está solo',
+    copy: 'Markus Schirp creó Mutant en 2012 y construyó alrededor de él un vocabulario preciso: subject, mutation, operator, alive y killed. Hoy existen alternativas nuevas con distintas decisiones de licencia, compatibilidad y arquitectura.',
+    annotation:
+      'MiniMutant toma prestada esa nomenclatura y la vuelve visible. No intenta competir con estas herramientas.',
+    presenter: [
+      'Presentá a Markus Schirp como creador y principal desarrollador de Mutant.',
+      'Mutant sigue siendo la referencia madura: RSpec, Minitest, Rails, ejecución incremental y una biblioteca amplia de operadores.',
+      'Contrastá las alternativas actuales: el fork MIT viamin/mutant; Mutineer, construido sobre Prism y stdlib; y Evilution como otra implementación reciente.',
+      'Nombrá Heckle como antecedente histórico. El propio README de Mutant lo reconoce como una influencia.',
+      'Aclarar la decisión de la charla: no elegir un ganador, sino construir el mecanismo mínimo para entenderlos.',
+    ],
+    claims: [
+      'Mutant fue creado por Markus Schirp y apareció en 2012.',
+      'Mutant integra RSpec y Minitest y soporta selección incremental.',
+      'El ecosistema Ruby actual incluye forks y reimplementaciones con distintos compromisos.',
+    ],
+  },
+  {
+    index: '04',
     section: 'Encuesta Ruby Sur',
     minutes: 1,
     visual: 'survey',
     title: 'La mayoría llega con curiosidad, no con experiencia',
-    copy: 'Antes de la charla preguntamos cuánto conocían la técnica y qué les impedía probarla. Son 11 respuestas: sirven para orientar esta conversación, no para representar a toda la comunidad Ruby.',
-    annotation:
-      '9 de 11 nunca usaron mutation testing. Las barreras más repetidas fueron no conocerlo y no haber tenido tiempo o prioridad.',
+    copy: '',
+    annotation: '',
     presenter: [
       'Empezá por el tamaño de la muestra: once respuestas de la convocatoria de Ruby Sur.',
       'Marcá que nueve personas nunca lo usaron y nueve tienen poca o ninguna familiaridad.',
-      'Usá las dos respuestas abiertas para cerrar el gag del título: “¿No es Mutation Testing?” y “tests de mutación”.',
+      'La pregunta sobre barreras permitía respuestas múltiples: cinco no lo conocían y cuatro no habían encontrado tiempo o prioridad.',
+      'Las respuestas minoritarias nombran coste, integración, falta de conocimiento y la necesidad de tener tests primero.',
       'No generalices estos resultados fuera de la audiencia de la charla.',
     ],
     claims: [
@@ -435,7 +511,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '04',
+    index: '05',
     section: 'MiniMutant · 01',
     minutes: 0.5,
     visual: 'imperative',
@@ -454,12 +530,12 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '05',
+    index: '06',
     section: 'Mapa de vuelo',
     minutes: 1,
     visual: 'architecture',
     title: 'Antes de construir: el recorrido completo',
-    copy: '',
+    copy: 'Usamos la nomenclatura de Mutant: un Subject es la unidad que transformamos; una Mutation es una alternativa concreta; alive o killed describe si la suite consiguió distinguirla.',
     annotation: '',
     presenter: [
       'Conectá el mapa con el ejemplo que acaba de ver el público.',
@@ -472,7 +548,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '06',
+    index: '07',
     section: 'MiniMutant · 02',
     minutes: 0.5,
     visual: 'imperative',
@@ -489,7 +565,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '07',
+    index: '08',
     section: 'MiniMutant · 03',
     minutes: 0.5,
     visual: 'imperative',
@@ -506,7 +582,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '08',
+    index: '09',
     section: 'MiniMutant · 04',
     minutes: 0.5,
     visual: 'imperative',
@@ -523,7 +599,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '09',
+    index: '10',
     section: 'MiniMutant · 05',
     minutes: 0.5,
     visual: 'imperative',
@@ -538,7 +614,7 @@ const slides: Slide[] = [
     claims: ['MutationPoint describe un único cambio estructural posible.'],
   },
   {
-    index: '10',
+    index: '11',
     section: 'MiniMutant · 06',
     minutes: 0.5,
     visual: 'imperative',
@@ -555,7 +631,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '11',
+    index: '12',
     section: 'MiniMutant · 07',
     minutes: 0.5,
     visual: 'imperative',
@@ -572,7 +648,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '12',
+    index: '13',
     section: 'MiniMutant · 08',
     minutes: 0.5,
     visual: 'imperative',
@@ -583,6 +659,7 @@ const slides: Slide[] = [
     code: 'Inserter.with(subject, ruby) do\n  Citizen.new.adult?(18) # false\nend\nCitizen.new.adult?(18) # true',
     presenter: [
       'Ejecutá y leé la transición completa: original → inserted → restored.',
+      '`class_eval` recibe path y línea sólo como metadata: conserva `source_location` y hace que los backtraces del método temporal apunten al lugar original.',
       'Aclarar que Mutant real suma aislamiento de procesos alrededor de esta idea.',
     ],
     claims: [
@@ -590,7 +667,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '13',
+    index: '14',
     section: 'MiniMutant · 09',
     minutes: 0.5,
     visual: 'imperative',
@@ -601,7 +678,7 @@ const slides: Slide[] = [
     code: 'status = Runner.call { run_tests }\n# primero: ALIVE\n# agregar el caso 18 y reejecutar → KILLED',
     presenter: [
       'Primero ejecutá sin tocar nada y obtené ALIVE.',
-      'Abrí citizen_test.rb, agregá `raise "18 should be adult" unless citizen.adult?(18)` dentro de run_tests y reejecutá.',
+      'Abrí citizen_test.rb, agregá `def test_eighteen_is_adult; assert Citizen.new.adult?(18); end` y reejecutá.',
       'El cambio de veredicto es la demostración central de la charla.',
     ],
     claims: [
@@ -610,7 +687,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '14',
+    index: '15',
     section: 'Operadores',
     minutes: 3,
     visual: 'decision',
@@ -625,26 +702,6 @@ const slides: Slide[] = [
     claims: [
       'Semantic Reduction pregunta qué comportamiento podemos quitar.',
       'Orthogonal Replacement pregunta si los tests distinguen alternativas válidas.',
-    ],
-  },
-  {
-    index: '15',
-    section: 'Espacio de programas',
-    minutes: 1.5,
-    visual: 'spaces',
-    title: 'La suite define cuánto comportamiento dejamos pasar',
-    copy: 'Ruby admite un universo enorme de programas. Nuestra suite acepta un subconjunto: todos los que producen las observaciones que hoy comprobamos. Los requerimientos definen un espacio todavía menor: los comportamientos que realmente consideramos correctos.',
-    annotation:
-      'Mutation testing busca contraejemplos para contraer el espacio aceptado por la suite hasta aproximarlo al espacio permitido por los requerimientos.',
-    presenter: [
-      'Leé las esferas de afuera hacia adentro: posible en Ruby, aceptado por la suite, válido para el negocio.',
-      'Señalá la zona entre la esfera de tests y la de requerimientos: son programas incorrectos que igualmente pasan.',
-      'Cada mutante vivo descubre un punto en esa zona y nos obliga a elegir entre agregar una observación o aceptar la alternativa.',
-      'Aclaración formal: no enumeramos todo el universo Ruby; los operadores muestrean vecinos pequeños y relevantes del programa actual.',
-    ],
-    claims: [
-      'Una suite fuerte hace que “pasa los tests” se aproxime a “cumple los requerimientos”.',
-      'Mutation testing mide y reduce la holgura entre ambos espacios mediante alternativas concretas.',
     ],
   },
   {
@@ -667,6 +724,26 @@ const slides: Slide[] = [
   },
   {
     index: '17',
+    section: 'Espacio de programas',
+    minutes: 1.5,
+    visual: 'spaces',
+    title: 'La suite define cuánto comportamiento dejamos pasar',
+    copy: 'Ruby admite un universo enorme de programas. Nuestra suite acepta un subconjunto: todos los que producen las observaciones que hoy comprobamos. Los requerimientos definen un espacio todavía menor: los comportamientos que realmente consideramos correctos.',
+    annotation:
+      'Mutation testing busca contraejemplos para contraer el espacio aceptado por la suite hasta aproximarlo al espacio permitido por los requerimientos.',
+    presenter: [
+      'Leé las esferas de afuera hacia adentro: posible en Ruby, aceptado por la suite, válido para el negocio.',
+      'Señalá la zona entre la esfera de tests y la de requerimientos: son programas incorrectos que igualmente pasan.',
+      'Cada mutante vivo descubre un punto en esa zona y nos obliga a elegir entre agregar una observación o aceptar la alternativa.',
+      'Aclaración formal: no enumeramos todo el universo Ruby; los operadores muestrean vecinos pequeños y relevantes del programa actual.',
+    ],
+    claims: [
+      'Una suite fuerte hace que “pasa los tests” se aproxime a “cumple los requerimientos”.',
+      'Mutation testing mide y reduce la holgura entre ambos espacios mediante alternativas concretas.',
+    ],
+  },
+  {
+    index: '18',
     section: 'Oracle Problem',
     minutes: 1.5,
     visual: 'oracle',
@@ -676,6 +753,7 @@ const slides: Slide[] = [
       'Encontrar una diferencia es un problema técnico. Decidir cuál comportamiento es correcto exige una fuente de verdad.',
     presenter: [
       'Separá dos preguntas: “¿existe un input que distingue?” y “¿qué salida debería producir?”.',
+      'Aclaración: risk_score y el ticket PAY-184 son un ejemplo ficticio. Sirven para mostrar un caso de dominio cuya respuesta no es obvia sin contexto.',
       'Usá risk_score = 742: >= envía el pago a revisión manual y > lo aprueba. Sin conocer la política de riesgo, ninguna salida es obviamente correcta.',
       'Nombrá posibles oráculos: tests, especificaciones, documentación, requerimientos y conocimiento del dominio.',
     ],
@@ -685,12 +763,12 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '18',
+    index: '19',
     section: 'Oracle contextual',
     minutes: 1.5,
     visual: 'contextual-oracle',
     title: 'Los LLMs pueden construir un oracle contextual',
-    copy: 'Con acceso al repositorio y al contexto de la empresa, un LLM puede reunir evidencia dispersa. Si la política dice “risk_score de 742 o más requiere revisión manual”, puede justificar >=, señalar que > viola la regla y proponer el caso de borde.',
+    copy: 'Con acceso al repositorio y al contexto de la empresa, un LLM puede reunir evidencia dispersa. En nuestro ejemplo ficticio, el ticket PAY-184 define que “risk_score de 742 o más requiere revisión manual”. Con esa fuente puede justificar >= y proponer el caso de borde.',
     annotation:
       'No resuelven formalmente el Oracle Problem; reducen muchísimo su impacto práctico cuando existe una fuente de verdad recuperable.',
     presenter: [
@@ -704,7 +782,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '19',
+    index: '20',
     section: 'Equivalent mutants',
     minutes: 1.5,
     visual: 'equivalent',
@@ -713,7 +791,7 @@ const slides: Slide[] = [
     annotation:
       'Si la simplificación conserva toda conducta observable, aceptar el mutante mejora el programa original.',
     presenter: [
-      'Contrastá con >= → >: risk_score = 742 prueba que esos programas no son equivalentes.',
+      'Contrastá con >= → >: en el ejemplo ficticio, risk_score = 742 prueba que esos programas no son equivalentes.',
       'Usá i + 1 + 0 → i + 1: quitar + 0 no cambia ningún resultado observable.',
       'Explicá la filosofía: un buen operador no debería producir ruido; si una simplificación es equivalente, se acepta el cambio.',
     ],
@@ -723,7 +801,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '20',
+    index: '21',
     section: 'Coste y optimización',
     minutes: 2,
     visual: 'cost',
@@ -747,7 +825,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '21',
+    index: '22',
     section: 'Mutantes y fallas reales',
     minutes: 2,
     visual: 'coupling',
@@ -770,7 +848,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '22',
+    index: '23',
     section: 'Mutation Testing en Meta',
     minutes: 2,
     visual: 'meta-pipeline',
@@ -792,7 +870,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '23',
+    index: '24',
     section: 'Test-a-thons en Meta',
     minutes: 1.5,
     visual: 'testathons',
@@ -813,7 +891,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '24',
+    index: '25',
     section: 'Más allá del unit test',
     minutes: 1.5,
     visual: 'transfer',
@@ -835,7 +913,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '25',
+    index: '26',
     section: 'Reflexión',
     minutes: 3,
     visual: 'reflection',
@@ -890,6 +968,21 @@ const sources = [
         'Parser oficial de Ruby usado para construir y transformar el AST de MiniMutant.',
         'https://github.com/ruby/prism',
       ],
+      [
+        'viamin/mutant',
+        'Fork MIT de Mutant con integraciones RSpec y Minitest.',
+        'https://github.com/viamin/mutant',
+      ],
+      [
+        'Mutineer',
+        'Implementación clean-room sobre Prism y la biblioteca estándar.',
+        'https://github.com/davidteren/mutineer',
+      ],
+      [
+        'Evilution',
+        'Implementación alternativa reciente para proyectos Ruby.',
+        'https://github.com/marinazzio/evilution',
+      ],
     ],
   },
   {
@@ -943,6 +1036,11 @@ const sources = [
         'Richard Lipton — Georgia Tech',
         'Perfil y retrato del autor al que se atribuye la propuesta original de 1971.',
         'https://c21u.gatech.edu/directory/person/richard-d-lipton',
+      ],
+      [
+        'Markus Schirp — Mutant on Steroids',
+        'Charla de 2019 y fotograma del creador de Mutant usado en la diapositiva de herramientas.',
+        'https://www.rubyevents.org/talks/mutant-on-steroids',
       ],
       [
         'Uncle Bob — agentes y mutation testing (2026)',
@@ -1041,6 +1139,7 @@ function labFilesFor(step: ImperativeStep, initialCode: string): LabFile[] {
   if (step === 'contract') {
     return [
       { name: 'citizen.rb', code: calculatorSource.trimEnd() },
+      { name: 'tiny_test.rb', code: tinyTestSource },
       { name: 'citizen_test.rb', code: citizenTestSource },
     ];
   }
@@ -1050,6 +1149,7 @@ function labFilesFor(step: ImperativeStep, initialCode: string): LabFile[] {
   ).padStart(2, '0');
   return [
     { name: 'citizen.rb', code: calculatorSource.trimEnd() },
+    { name: 'tiny_test.rb', code: tinyTestSource },
     { name: 'citizen_test.rb', code: citizenTestSource },
     ...architectureFiles.slice(0, architectureDepth[step]),
     { name: `step_${stepNumber}.rb`, code: initialCode },
@@ -1358,45 +1458,120 @@ function WelcomeTitle() {
   );
 }
 
-function AstBranch({
-  node,
-  root = false,
-}: {
+type AstLayoutNode = {
+  id: number;
   node: AstNodeData;
-  root?: boolean;
-}) {
-  const highlighted = node.type === 'CallNode';
+  x: number;
+  y: number;
+  parentId: number | null;
+};
+
+function layoutAst(root: AstNodeData) {
+  const nodeWidth = 150;
+  const nodeHeight = 44;
+  const horizontalGap = 18;
+  const levelGap = 76;
+  const entries: AstLayoutNode[] = [];
+  let nextLeaf = 0;
+  let nextId = 0;
+  let deepestLevel = 0;
+
+  const visit = (
+    node: AstNodeData,
+    depth: number,
+    parentId: number | null,
+  ): number => {
+    const id = nextId++;
+    deepestLevel = Math.max(deepestLevel, depth);
+    const childXs = node.children.map((child) => visit(child, depth + 1, id));
+    const x =
+      childXs.length > 0
+        ? (childXs[0] + childXs[childXs.length - 1]) / 2
+        : nextLeaf++ * (nodeWidth + horizontalGap) + nodeWidth / 2;
+
+    entries.push({ id, node, x, y: depth * levelGap + 12, parentId });
+    return x;
+  };
+
+  visit(root, 0, null);
+  const contentWidth = Math.max(
+    nodeWidth + 24,
+    nextLeaf * (nodeWidth + horizontalGap) - horizontalGap + 24,
+  );
+
+  return {
+    entries,
+    width: contentWidth,
+    height: deepestLevel * levelGap + nodeHeight + 24,
+    nodeWidth,
+    nodeHeight,
+  };
+}
+
+function AstGraph({ root }: { root: AstNodeData }) {
+  const { entries, width, height, nodeWidth, nodeHeight } = layoutAst(root);
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
 
   return (
-    <div className={root ? '' : 'relative ml-5 border-l border-white/20 pl-6'}>
-      {!root && (
-        <span className="absolute -left-px top-5 w-6 border-t border-white/20" />
-      )}
-      <div
-        className={`flex min-h-9 items-center gap-3 border px-3 py-2 font-mono text-xs ${highlighted ? 'border-[#ff6b81] bg-[#9c1f31]/25' : 'border-white/10 bg-white/[.03]'}`}
-      >
-        <span
-          className={
-            highlighted ? 'font-bold text-[#ff8b9a]' : 'text-[#82aaff]'
-          }
-        >
-          {node.type}
-        </span>
-        {node.detail && (
-          <span className="ml-auto text-[#f9c784]">{node.detail}</span>
-        )}
-      </div>
-      {node.children.length > 0 && (
-        <div className="pt-1">
-          {node.children.map((child, index) => (
-            <AstBranch
-              node={child}
-              key={`${child.type}-${child.detail}-${index}`}
+    <svg className="w-full" viewBox={`0 0 ${width} ${height}`}>
+      <title>
+        Árbol sintáctico vertical generado desde la respuesta de Prism
+      </title>
+      {entries.map((entry) => {
+        if (entry.parentId === null) return null;
+        const parent = byId.get(entry.parentId);
+        if (!parent) return null;
+        const middleY = parent.y + nodeHeight + 14;
+        return (
+          <path
+            d={`M ${parent.x} ${parent.y + nodeHeight} V ${middleY} H ${entry.x} V ${entry.y}`}
+            fill="none"
+            key={`edge-${entry.id}`}
+            stroke="rgba(255,255,255,.24)"
+            strokeWidth="1"
+          />
+        );
+      })}
+      {entries.map((entry) => {
+        const highlighted = entry.node.type === 'CallNode';
+        return (
+          <g key={entry.id}>
+            <rect
+              fill={highlighted ? '#4c1e27' : '#2a2225'}
+              height={nodeHeight}
+              rx="2"
+              stroke={highlighted ? '#ff6b81' : 'rgba(255,255,255,.15)'}
+              width={nodeWidth}
+              x={entry.x - nodeWidth / 2}
+              y={entry.y}
             />
-          ))}
-        </div>
-      )}
-    </div>
+            <text
+              fill={highlighted ? '#ff8b9a' : '#82aaff'}
+              fontFamily="var(--font-plex-mono)"
+              fontSize="9"
+              fontWeight={highlighted ? '700' : '500'}
+              textAnchor="middle"
+              x={entry.x}
+              y={entry.y + (entry.node.detail ? 18 : 27)}
+            >
+              {entry.node.type}
+            </text>
+            {entry.node.detail && (
+              <text
+                fill="#f9c784"
+                fontFamily="var(--font-plex-mono)"
+                fontSize="8"
+                textAnchor="middle"
+                x={entry.x}
+                y={entry.y + 33}
+              >
+                {entry.node.detail}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -1417,9 +1592,9 @@ function AstTree({
           {root ? 'respuesta de Prism' : 'esperando ejecución'}
         </span>
       </div>
-      <div className="mt-5">
+      <div className="mt-5 overflow-hidden">
         {root ? (
-          <AstBranch node={root} root />
+          <AstGraph root={root} />
         ) : (
           <div className="grid min-h-[360px] place-items-center border border-dashed border-white/15 p-8 text-center">
             <div>
@@ -1487,12 +1662,16 @@ function MiniMutantSlide({
         <div className="mb-8">
           <SlideHeading slide={slide} compact />
         </div>
-        <RubyLab
-          initialCode={runnableSteps[slide.step]}
-          step={slide.step}
-          tall
-          key={slide.index}
-        />
+        <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+          <RubyLab
+            initialCode={runnableSteps[slide.step]}
+            step={slide.step}
+            tall
+            onAst={setAstRoot}
+            key={slide.index}
+          />
+          <AstTree root={astRoot} title="Prism AST · citizen.rb" />
+        </div>
       </div>
     );
   }
@@ -1532,6 +1711,26 @@ function MiniMutantSlide({
             key={slide.index}
           />
           <AstTree root={astRoot} title="Prism AST · mutado" />
+        </div>
+      </div>
+    );
+  }
+
+  if (slide.step === 'point') {
+    return (
+      <div>
+        <div className="mb-8">
+          <SlideHeading slide={slide} compact />
+        </div>
+        <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+          <RubyLab
+            initialCode={runnableSteps[slide.step]}
+            step={slide.step}
+            tall
+            onAst={setAstRoot}
+            key={slide.index}
+          />
+          <AstTree root={astRoot} title="MutationPoint · CallNode" />
         </div>
       </div>
     );
@@ -1781,11 +1980,104 @@ function Diagram({ visual }: { visual: Visual }) {
       </div>
     );
 
+  if (visual === 'ruby-tools')
+    return (
+      <div className="overflow-hidden border border-[#6c2330]/20 bg-[#fffdfb] shadow-[0_18px_50px_rgba(91,30,42,.09)]">
+        <a
+          className="grid gap-4 border-b border-[#6c2330]/15 bg-[#42191f] p-5 text-[#fffaf6] transition hover:bg-[#522027] sm:grid-cols-[96px_1fr] sm:items-center"
+          href="https://github.com/mbj/mutant"
+          rel="noreferrer"
+          target="_blank"
+        >
+          <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-white/20">
+            <Image
+              alt="Markus Schirp"
+              className="origin-bottom-left scale-[2.6] object-cover object-left-bottom"
+              fill
+              sizes="96px"
+              src="https://i.ytimg.com/vi/j1Ze3pKNJ4A/maxresdefault.jpg"
+              unoptimized
+            />
+          </div>
+          <div>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[.15em] text-[#f4a5b1]">
+              Mutant · desde 2012
+            </p>
+            <p className="mt-2 text-xl font-semibold">Markus Schirp</p>
+            <p className="mt-2 text-xs leading-relaxed text-white/65">
+              Creador y principal desarrollador. RSpec, Minitest, Rails,
+              operadores amplios y selección incremental.
+            </p>
+            <p className="mt-2 font-mono text-[8px] uppercase tracking-[.12em] text-white/40">
+              Foto · wroclove.rb 2019
+            </p>
+          </div>
+        </a>
+
+        <div className="grid gap-px bg-[#6c2330]/15 sm:grid-cols-3">
+          {[
+            {
+              name: 'viamin/mutant',
+              detail: 'Fork compatible bajo licencia MIT.',
+              tag: 'fork',
+              href: 'https://github.com/viamin/mutant',
+            },
+            {
+              name: 'Mutineer',
+              detail: 'Clean room sobre Prism y stdlib.',
+              tag: 'Prism',
+              href: 'https://github.com/davidteren/mutineer',
+            },
+            {
+              name: 'Evilution',
+              detail: 'Otra implementación reciente para Ruby.',
+              tag: 'alternativa',
+              href: 'https://github.com/marinazzio/evilution',
+            },
+          ].map((tool) => (
+            <a
+              className="group bg-[#fffaf6] p-4 transition hover:bg-[#f8eeea]"
+              href={tool.href}
+              key={tool.name}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-[#42191f]">
+                  {tool.name}
+                </p>
+                <ExternalLink className="size-3 text-[#9c1f31] opacity-50 transition group-hover:opacity-100" />
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-[#75555a]">
+                {tool.detail}
+              </p>
+              <p className="mt-4 font-mono text-[9px] uppercase tracking-[.14em] text-[#9c1f31]">
+                {tool.tag}
+              </p>
+            </a>
+          ))}
+        </div>
+        <p className="border-t border-[#6c2330]/15 px-5 py-3 text-xs text-[#75555a]">
+          Antecedente histórico:{' '}
+          <strong className="text-[#42191f]">Heckle</strong>. MiniMutant usa los
+          mismos conceptos para mostrar el mecanismo.
+        </p>
+      </div>
+    );
+
   if (visual === 'survey') {
     const familiarity = [
       { label: 'Lo escuchó nombrar', value: 6, color: '#9c1f31' },
       { label: 'Nada', value: 3, color: '#6b3d7a' },
       { label: 'Un poco', value: 2, color: '#c87884' },
+    ];
+    const barriers = [
+      { label: 'No lo conocía', value: 5 },
+      { label: 'Sin tiempo o prioridad', value: 4 },
+      { label: 'Todavía no sé suficiente', value: 1 },
+      { label: 'Necesita una suite previa', value: 1 },
+      { label: 'Lento o costoso', value: 1 },
+      { label: 'Difícil de integrar', value: 1 },
     ];
 
     return (
@@ -1810,7 +2102,7 @@ function Diagram({ visual }: { visual: Visual }) {
             <p className="mt-1 text-sm font-semibold">poca o ninguna</p>
           </div>
         </div>
-        <div className="p-5">
+        <div className="p-5 pb-4">
           <div className="flex items-center justify-between">
             <p className={label}>¿Cuánto conocían la técnica?</p>
             <span className="font-mono text-[10px] text-[#75555a]">n = 11</span>
@@ -1837,28 +2129,33 @@ function Diagram({ visual }: { visual: Visual }) {
               </div>
             ))}
           </div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <div className="border border-[#6c2330]/15 bg-[#fffaf6] px-3 py-2.5">
-              <span className="font-mono text-xs font-bold text-[#9c1f31]">
-                5
-              </span>
-              <span className="ml-2 text-xs">no lo conocían</span>
-            </div>
-            <div className="border border-[#6c2330]/15 bg-[#fffaf6] px-3 py-2.5">
-              <span className="font-mono text-xs font-bold text-[#9c1f31]">
-                4
-              </span>
-              <span className="ml-2 text-xs">sin tiempo o prioridad</span>
-            </div>
-          </div>
         </div>
-        <div className="grid gap-px border-t border-[#6c2330]/15 bg-[#6c2330]/10 sm:grid-cols-2">
-          <blockquote className="bg-[#f8eeea] px-4 py-3 text-xs font-semibold text-[#42191f]">
-            “¿No es Mutation Testing?”
-          </blockquote>
-          <blockquote className="bg-[#f8eeea] px-4 py-3 text-xs font-semibold text-[#42191f]">
-            “Los llamaría tests de mutación”
-          </blockquote>
+        <div className="border-t border-[#6c2330]/15 bg-[#fffaf6] px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className={label}>¿Por qué no lo usan?</p>
+            <span className="font-mono text-[9px] text-[#75555a]">
+              respuesta múltiple · n = 11
+            </span>
+          </div>
+          <div className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2">
+            {barriers.map((item) => (
+              <div
+                className="grid grid-cols-[1fr_64px_18px] items-center gap-2"
+                key={item.label}
+              >
+                <span className="text-[11px] text-[#75555a]">{item.label}</span>
+                <div className="h-1.5 overflow-hidden rounded-full bg-[#eadbdd]">
+                  <div
+                    className="h-full rounded-full bg-[#9c1f31]"
+                    style={{ width: `${(item.value / 5) * 100}%` }}
+                  />
+                </div>
+                <span className="text-right font-mono text-[10px] font-bold text-[#42191f]">
+                  {item.value}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
         <p className="border-t border-[#6c2330]/15 px-5 py-2 font-mono text-[9px] text-[#75555a]">
           Encuesta previa Ruby Sur · 18–22 sep 2026
@@ -1875,7 +2172,7 @@ function Diagram({ visual }: { visual: Visual }) {
         label: 'Encontrar el subject',
         result: 'DefNode',
         items: ['Subject', 'SourceFile', 'MethodFinder'],
-        accent: '#82aaff',
+        accent: '#9c1f31',
       },
       {
         number: '02',
@@ -1883,7 +2180,7 @@ function Diagram({ visual }: { visual: Visual }) {
         label: 'Construir la alternativa',
         result: 'Mutation(AST)',
         items: ['MutationPoint', 'OperatorReplacement', 'Mutation'],
-        accent: '#c792ea',
+        accent: '#6b3d7a',
       },
       {
         number: '03',
@@ -1891,37 +2188,37 @@ function Diagram({ visual }: { visual: Visual }) {
         label: 'Pedirle evidencia a la suite',
         result: 'alive / killed',
         items: ['Deparser', 'Inserter', 'Runner'],
-        accent: '#ff8b9a',
+        accent: '#c87884',
       },
     ];
 
     return (
-      <div className="overflow-hidden border border-[#6c2330]/25 bg-[#20181a] text-[#fffaf6] shadow-[0_22px_60px_rgba(42,23,26,.2)]">
-        <div className="flex items-center justify-between border-b border-white/10 bg-[#2c2023] px-5 py-4">
+      <div className="overflow-hidden border border-[#6c2330]/20 bg-[#fffdfb] text-[#42191f] shadow-[0_18px_50px_rgba(91,30,42,.09)]">
+        <div className="flex items-center justify-between border-b border-[#6c2330]/15 bg-[#fffaf6] px-5 py-4">
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[.18em] text-[#ff8b9a]">
-              MiniMutant / system map
+              MiniMutant / mapa del sistema
             </p>
-            <p className="mt-1 text-xs text-white/45">
+            <p className="mt-1 text-xs text-[#75555a]">
               Un experimento estructural, tres responsabilidades
             </p>
           </div>
-          <span className="flex items-center gap-2 font-mono text-[10px] text-white/45">
-            <span className="size-1.5 rounded-full bg-[#63d79b] shadow-[0_0_12px_#63d79b]" />
+          <span className="flex items-center gap-2 font-mono text-[10px] text-[#75555a]">
+            <span className="size-1.5 rounded-full bg-[#9c1f31]" />
             Ruby → AST → evidencia
           </span>
         </div>
-        <div className="grid min-h-[430px] grid-cols-1 gap-3 p-5 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-stretch">
+        <div className="grid min-h-[400px] grid-cols-1 gap-3 p-5 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-stretch">
           {stages.map((stage, stageIndex) => (
             <div className="contents" key={stage.number}>
               {stageIndex > 0 && (
                 <div className="hidden items-center sm:flex">
-                  <div className="grid size-8 place-items-center rounded-full border border-white/15 bg-white/[.04]">
-                    <ArrowRight className="size-4 text-white/55" />
+                  <div className="grid size-8 place-items-center rounded-full border border-[#6c2330]/15 bg-[#fffaf6]">
+                    <ArrowRight className="size-4 text-[#9c1f31]" />
                   </div>
                 </div>
               )}
-              <div className="relative flex flex-col border border-white/10 bg-white/[.035] p-4">
+              <div className="relative flex flex-col border border-[#6c2330]/15 bg-[#fffaf6] p-4">
                 <div
                   className="absolute inset-x-0 top-0 h-0.5"
                   style={{ backgroundColor: stage.accent }}
@@ -1938,18 +2235,18 @@ function Diagram({ visual }: { visual: Visual }) {
                       {stage.label}
                     </p>
                   </div>
-                  <span className="font-mono text-3xl font-light text-white/12">
+                  <span className="font-mono text-3xl font-light text-[#6c2330]/10">
                     {stage.number}
                   </span>
                 </div>
-                <div className="my-5 h-px bg-white/10" />
+                <div className="my-5 h-px bg-[#6c2330]/12" />
                 <div className="flex-1 space-y-2">
                   {stage.items.map((item, itemIndex) => (
                     <div className="relative" key={item}>
                       {itemIndex > 0 && (
-                        <div className="absolute -top-2 left-3 h-2 w-px bg-white/15" />
+                        <div className="absolute -top-2 left-3 h-2 w-px bg-[#6c2330]/15" />
                       )}
-                      <div className="flex items-center gap-2 border border-white/10 bg-[#171113] px-3 py-2.5 font-mono text-[10px] text-white/75">
+                      <div className="flex items-center gap-2 border border-[#6c2330]/15 bg-white px-3 py-2.5 font-mono text-[10px] text-[#75555a]">
                         <span
                           className="size-1.5 rounded-full"
                           style={{ backgroundColor: stage.accent }}
@@ -1959,8 +2256,8 @@ function Diagram({ visual }: { visual: Visual }) {
                     </div>
                   ))}
                 </div>
-                <div className="mt-5 border-t border-white/10 pt-4">
-                  <p className="font-mono text-[8px] uppercase tracking-[.15em] text-white/35">
+                <div className="mt-5 border-t border-[#6c2330]/12 pt-4">
+                  <p className="font-mono text-[8px] uppercase tracking-[.15em] text-[#75555a]/70">
                     output
                   </p>
                   <p
@@ -1974,7 +2271,7 @@ function Diagram({ visual }: { visual: Visual }) {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-3 border-t border-white/10 bg-[#171113] px-5 py-3 text-center font-mono text-[9px] uppercase tracking-[.12em] text-white/35">
+        <div className="grid grid-cols-3 border-t border-[#6c2330]/15 bg-[#f8eeea] px-5 py-3 text-center font-mono text-[9px] uppercase tracking-[.12em] text-[#75555a]">
           <span>runtime</span>
           <span>estructura</span>
           <span>comportamiento</span>
@@ -2079,21 +2376,28 @@ function Diagram({ visual }: { visual: Visual }) {
             r="175"
             stroke="#6b3d7a"
           />
-          <PointCloudSphere
-            color="#6657b8"
-            dotScale={1.4}
-            dots={rubyUniverseDots}
-            maxOpacity={0.72}
-            minOpacity={0.08}
-          />
-          <PointCloudSphere
-            color="#b32443"
-            dotScale={1.65}
-            dots={suiteUniverseDots}
-            maxOpacity={0.82}
-            minOpacity={0.09}
-          />
-          <g filter="url(#point-glow)">
+          <g className="sphere-spin sphere-spin-outer">
+            <PointCloudSphere
+              color="#6657b8"
+              dotScale={1.4}
+              dots={rubyUniverseDots}
+              maxOpacity={0.72}
+              minOpacity={0.08}
+            />
+          </g>
+          <g className="sphere-spin sphere-spin-middle">
+            <PointCloudSphere
+              color="#b32443"
+              dotScale={1.65}
+              dots={suiteUniverseDots}
+              maxOpacity={0.82}
+              minOpacity={0.09}
+            />
+          </g>
+          <g
+            className="sphere-spin sphere-spin-inner"
+            filter="url(#point-glow)"
+          >
             <PointCloudSphere
               color="#d28b26"
               dotScale={1.85}
@@ -2175,7 +2479,7 @@ function Diagram({ visual }: { visual: Visual }) {
           className={`${card} grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center`}
         >
           <div>
-            <p className={label}>Original</p>
+            <p className={label}>Original · ejemplo ficticio</p>
             <p className="mt-2 font-mono text-base font-semibold">
               risk_score &gt;= 742
             </p>
@@ -2223,7 +2527,7 @@ function Diagram({ visual }: { visual: Visual }) {
         </div>
         <div className="border border-[#6b3d7a] bg-[#f7f0fa] p-5">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#6b3d7a]">
-            Oracle contextual · evidencia encontrada
+            Jira PAY-184 · ejemplo ficticio
           </p>
           <blockquote className="mt-4 border-l-2 border-[#6b3d7a] pl-4 text-sm font-semibold leading-relaxed text-[#42191f]">
             “Un risk_score de 742 o más requiere revisión manual.”
@@ -2876,14 +3180,14 @@ export default function Home() {
                           <WelcomeTitle />
                         ) : (
                           <h1
-                            className={`max-w-3xl font-semibold tracking-[-.055em] text-[#2a171a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'coupling', 'meta-pipeline', 'testathons', 'transfer'].includes(current.visual) ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-4xl sm:text-6xl lg:text-7xl'}`}
+                            className={`max-w-3xl font-semibold tracking-[-.055em] text-[#2a171a] ${['history', 'ruby-tools', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'coupling', 'meta-pipeline', 'testathons', 'transfer'].includes(current.visual) ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-4xl sm:text-6xl lg:text-7xl'}`}
                           >
                             {current.title}
                           </h1>
                         )}
                         {current.copy && (
                           <p
-                            className={`mt-7 max-w-2xl leading-relaxed text-[#75555a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'coupling', 'meta-pipeline', 'testathons', 'transfer'].includes(current.visual) ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}
+                            className={`mt-7 max-w-2xl leading-relaxed text-[#75555a] ${['history', 'ruby-tools', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'coupling', 'meta-pipeline', 'testathons', 'transfer'].includes(current.visual) ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}
                           >
                             {current.copy}
                           </p>
