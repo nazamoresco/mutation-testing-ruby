@@ -1,6 +1,6 @@
 # Conclusiones del experimento de Mutant
 
-Fecha de corte: 2026-09-22.
+Fecha de corte: 2026-09-23.
 
 ## Qué quedó medido de forma válida
 
@@ -22,6 +22,13 @@ No está demostrado que Mutant hubiera evitado bugs reales. El único par
 histórico fix/control ejecutado, Huginn, no comparte versión de Ruby, Rails ni
 Mutant. Sus 87 y 10 mutantes vivos no se comparan entre sí y quedan excluidos
 de cualquier estimación de efecto o agregado global.
+
+La ampliación histórica cerró con cero pares elegibles. dev.to fue el único
+par restante que logró una imagen Ruby común, pero su padre de fix emitió
+múltiples fallos en el baseline RSpec serial; no se ejecutaron Mutant ni el
+control. El detalle, incluido que no se conservó un conteo final fiable tras
+retirarse el contenedor efímero, está en
+`baselines/devto-3cd0a548-2026-09-23.md`.
 
 Tampoco se agrega Trailmix con Speakerline bajo el protocolo estricto nuevo:
 comparten Mutant 0.16.3 y perfil `light`, pero corrieron con Ruby distintos.
@@ -49,10 +56,11 @@ para interpretar los vivos.** La afirmación más fuerte —que evita bugs— qu
 pendiente de una cohorte de pares homogéneos y revisión de las diferencias
 encontradas por cada fix.
 
-El siguiente experimento no debe aumentar el número de aplicaciones todavía.
-Debe seleccionar pares que pasen la celda de compatibilidad y, recién entonces,
-ejecutar la misma receta para cada lado y contrastar los mutantes afectados por
-el diff del fix.
+Para reiniciar la pregunta causal hace falta ampliar el universo histórico, no
+forzar los nueve casos agotados: buscar commits con sujetos método a método,
+exigir una celda exacta antes del bootstrap y persistir el formatter de RSpec
+fuera del contenedor. Sólo después se ejecutará la misma receta para ambos lados
+y se contrastarán mutantes afectados por el diff del fix.
 
 Camaleon CMS fue el primer par que pasó la compatibilidad estática, pero falló
 su baseline nativo por una dependencia de Chrome 125 no disponible en Linux

@@ -132,9 +132,20 @@ Esta corrección redujo la cola de manera honesta:
 | OSEM | Excluido | El control de autorización más próximo usa Ruby/Rails/RSpec-Rails distintos. |
 | TimeOverflow | Excluido | Los controles de categoría comparables son de Ruby 2.6/Rails 6.1; el control moderno es de otra superficie. |
 | Postal | Excluido del efecto | Las cuatro suites y dos sondas fueron válidas, pero el fix cambia `Postal.process_name` y el control `Postal.logger`. |
-| dev.to | Candidato condicionado | `DetailsTag#render` y `ColTag#render` son métodos `Liquid::Block#render` comparables; Ruby/Rails/RSpec coinciden y sólo hay drift de Pry que debe normalizarse. |
+| dev.to | Excluido | La imagen común normalizó Pry y construyó correctamente, pero el baseline serial del padre del fix emitió múltiples fallos RSpec; no se ejecutaron control ni Mutant. |
 
-Por tanto, dev.to es el único siguiente candidato para preparar una celda de
-runtime común. Los resultados focalizados de Postal siguen registrados como
-viabilidad de Mutant a nivel proyecto, pero no se agregan como evidencia de
-prevención de bugs.
+Por tanto, no queda un candidato histórico utilizable en la cola revisada. Los
+resultados focalizados de Postal siguen registrados como viabilidad de Mutant a
+nivel proyecto, pero no se agregan como evidencia de prevención de bugs.
+
+## Cierre del screen histórico — 2026-09-23
+
+Los nueve proyectos que alcanzaron revisión manual están resueltos: ocho por
+incompatibilidad de runtime, ausencia de sujeto Mutant, superficie distinta o
+subject mismatch; dev.to por baseline fallido. El resultado terminal de esta
+cohorte es **cero pares fix/control válidos para una estimación causal**.
+
+El informe de dev.to conserva la evidencia observada y el límite de captura
+del conteo final en `research/baselines/devto-3cd0a548-2026-09-23.md`. No se
+interpreta la ausencia de ese conteo como un cero ni se ejecuta Mutant después
+de un baseline fallido.
