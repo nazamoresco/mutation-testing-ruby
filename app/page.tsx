@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 
 type Visual =
   | 'welcome'
+  | 'history'
   | 'survey'
   | 'architecture'
   | 'imperative'
@@ -388,6 +389,28 @@ const slides: Slide[] = [
   },
   {
     index: '02',
+    section: 'Historia',
+    minutes: 1.5,
+    visual: 'history',
+    title: 'Una idea de 1971 que tardó décadas en volverse práctica',
+    copy: 'Richard Lipton propuso mutation testing en un trabajo estudiantil. DeMillo, Lipton y Sayward lo formalizaron en 1978; medio siglo después, herramientas rápidas y referentes como Uncle Bob lo acercaron a más equipos.',
+    annotation:
+      'La idea no cambió tanto. Cambiaron el cómputo, las herramientas y el lugar donde aparece el feedback.',
+    presenter: [
+      'Aclaración histórica: no son 40 años. Desde el reporte de Lipton de 1971 pasaron más de cinco décadas.',
+      'En 1978, DeMillo, Lipton y Sayward publicaron “Hints on Test Data Selection”.',
+      'Mutant aparece en 2012; el estudio de GitHub registra un crecimiento claro de las herramientas prácticas desde fines de esa década.',
+      'En 2016, Uncle Bob escribió que una demo de PIT lo había dejado impresionado y lo presentó como una forma de recuperar confianza en una suite.',
+      'Mostrá la respuesta de la encuesta como remate: la popularización también trae discusiones culturales alrededor de sus referentes.',
+    ],
+    claims: [
+      'La primera propuesta se atribuye al reporte estudiantil de Richard Lipton de 1971.',
+      'La publicación seminal de DeMillo, Lipton y Sayward apareció en 1978.',
+      'La adopción reciente está ligada a tooling, integración y reducción del coste, no a una idea nueva.',
+    ],
+  },
+  {
+    index: '03',
     section: 'Encuesta Ruby Sur',
     minutes: 1,
     visual: 'survey',
@@ -408,7 +431,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '03',
+    index: '04',
     section: 'MiniMutant · 01',
     minutes: 0.5,
     visual: 'imperative',
@@ -427,7 +450,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '04',
+    index: '05',
     section: 'Mapa de vuelo',
     minutes: 1,
     visual: 'architecture',
@@ -445,7 +468,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '05',
+    index: '06',
     section: 'MiniMutant · 02',
     minutes: 0.5,
     visual: 'imperative',
@@ -462,7 +485,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '06',
+    index: '07',
     section: 'MiniMutant · 03',
     minutes: 0.5,
     visual: 'imperative',
@@ -479,7 +502,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '07',
+    index: '08',
     section: 'MiniMutant · 04',
     minutes: 0.5,
     visual: 'imperative',
@@ -496,7 +519,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '08',
+    index: '09',
     section: 'MiniMutant · 05',
     minutes: 0.5,
     visual: 'imperative',
@@ -511,7 +534,7 @@ const slides: Slide[] = [
     claims: ['MutationPoint describe un único cambio estructural posible.'],
   },
   {
-    index: '09',
+    index: '10',
     section: 'MiniMutant · 06',
     minutes: 0.5,
     visual: 'imperative',
@@ -528,7 +551,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '10',
+    index: '11',
     section: 'MiniMutant · 07',
     minutes: 0.5,
     visual: 'imperative',
@@ -545,7 +568,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '11',
+    index: '12',
     section: 'MiniMutant · 08',
     minutes: 0.5,
     visual: 'imperative',
@@ -563,7 +586,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '12',
+    index: '13',
     section: 'MiniMutant · 09',
     minutes: 0.5,
     visual: 'imperative',
@@ -583,7 +606,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '13',
+    index: '14',
     section: 'Operadores',
     minutes: 3,
     visual: 'decision',
@@ -601,7 +624,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '14',
+    index: '15',
     section: 'Espacio de programas',
     minutes: 1.5,
     visual: 'spaces',
@@ -621,7 +644,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '15',
+    index: '16',
     section: 'MiniMutant · 10',
     minutes: 1,
     visual: 'imperative',
@@ -639,7 +662,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '16',
+    index: '17',
     section: 'Oracle Problem',
     minutes: 1.5,
     visual: 'oracle',
@@ -658,7 +681,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '17',
+    index: '18',
     section: 'Oracle contextual',
     minutes: 1.5,
     visual: 'contextual-oracle',
@@ -677,7 +700,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '18',
+    index: '19',
     section: 'Equivalent mutants',
     minutes: 1.5,
     visual: 'equivalent',
@@ -696,7 +719,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '19',
+    index: '20',
     section: 'Coste y optimización',
     minutes: 2,
     visual: 'cost',
@@ -719,7 +742,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '20',
+    index: '21',
     section: 'Más allá del unit test',
     minutes: 1.5,
     visual: 'transfer',
@@ -741,7 +764,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '21',
+    index: '22',
     section: 'Reflexión',
     minutes: 3,
     visual: 'reflection',
@@ -791,27 +814,69 @@ const sources = [
         'Cómo leer y priorizar los resultados de una corrida.',
         'https://github.com/mbj/mutant/blob/main/docs/reading-reports.md',
       ],
+      [
+        'Prism — repository',
+        'Parser oficial de Ruby usado para construir y transformar el AST de MiniMutant.',
+        'https://github.com/ruby/prism',
+      ],
     ],
   },
   {
-    category: 'Evidencia y corpus',
+    category: 'Historia, evidencia y práctica',
     description:
-      'Referencias para discutir el valor y los límites de mutation testing más allá de una demo.',
+      'Los siete trabajos que sostienen la historia, los costes, la adopción y la conexión con LLMs de la charla.',
     links: [
       [
-        'Real World Rails',
-        'Corpus de checkouts de aplicaciones Rails para el piloto de la charla.',
-        'https://github.com/eliotsykes/real-world-rails',
+        'Chasing Mutants — Smith (2020)',
+        'Historia, operadores, costes, Oracle Problem, equivalencia y aplicaciones más allá del unit test.',
+        'https://doi.org/10.1007/978-3-030-29509-7_12',
       ],
       [
-        'Just et al. — real faults',
-        'Trabajo sobre la relación entre mutantes y fallas reales.',
-        'https://homes.cs.washington.edu/~rjust/publ/mutants_real_faults_tr_2014.pdf',
+        'State of Mutation Testing at Google (2018)',
+        'Mutación incremental sobre diffs, nodos áridos y feedback de developers dentro del code review.',
+        'https://doi.org/10.1145/3183519.3183521',
       ],
       [
-        'Google Research — long-term effects',
-        'Estudio sobre efectos a largo plazo de mutation testing en desarrollo.',
-        'https://research.google/pubs/long-term-effects-of-mutation-testing/',
+        'Practical Mutation Testing at Scale (2022)',
+        'Seis años de selección, supresión y priorización de mutantes en Google.',
+        'https://doi.org/10.1109/TSE.2021.3107634',
+      ],
+      [
+        'Does mutation testing improve testing practices? (2021)',
+        'Efectos longitudinales sobre los tests y relación entre mutantes y fallas reales.',
+        'https://arxiv.org/abs/2103.07189',
+      ],
+      [
+        'Mutation testing in the wild (2022)',
+        '127 herramientas y más de 3.500 repositorios activos encontrados en GitHub.',
+        'https://doi.org/10.1007/s10664-022-10177-8',
+      ],
+      [
+        'Mutation Testing in Practice (2024)',
+        'Encuesta a 104 developers de open source sobre beneficios, adopción y limitaciones.',
+        'https://doi.org/10.1109/TSE.2024.3377378',
+      ],
+      [
+        'Mutation-Guided LLM Test Generation at Meta (2025)',
+        'Mutantes específicos por riesgo, generación automática de tests y detección de equivalencia con LLMs.',
+        'https://doi.org/10.1145/3663529.3663839',
+      ],
+    ],
+  },
+  {
+    category: 'Historia y difusión',
+    description:
+      'Fuentes primarias de la nueva diapositiva histórica y sus retratos.',
+    links: [
+      [
+        'Richard Lipton — Georgia Tech',
+        'Perfil y retrato del autor al que se atribuye la propuesta original de 1971.',
+        'https://c21u.gatech.edu/directory/person/richard-d-lipton',
+      ],
+      [
+        'Uncle Bob — Mutation Testing (2016)',
+        'El artículo donde Robert C. Martin relata su redescubrimiento de la técnica mediante PIT.',
+        'https://blog.cleancoder.com/uncle-bob/2016/06/10/MutationTesting.html',
       ],
     ],
   },
@@ -1539,6 +1604,103 @@ function Diagram({ visual }: { visual: Visual }) {
             </a>
           </div>
         </div>
+      </div>
+    );
+
+  if (visual === 'history')
+    return (
+      <div className="overflow-hidden border border-[#6c2330]/20 bg-[#fffdfb] shadow-[0_18px_50px_rgba(91,30,42,.09)]">
+        <div className="border-b border-[#6c2330]/15 px-5 py-4">
+          <div className="grid grid-cols-5 gap-2">
+            {[
+              ['1971', 'Lipton', 'primer reporte'],
+              ['1978', 'DeMillo · Lipton · Sayward', 'paper seminal'],
+              ['2012', 'Mutant', 'Ruby'],
+              ['2016', 'Uncle Bob', 'vuelve a impulsarlo'],
+              ['2022', '3.581 repos', 'evidencia en GitHub'],
+            ].map(([year, name, event], index) => (
+              <div
+                className="relative border-t-2 border-[#9c1f31]/25 pt-3"
+                key={year}
+              >
+                <span className="absolute -top-[5px] left-0 size-2 rounded-full bg-[#9c1f31] ring-4 ring-[#fffdfb]" />
+                <p className="font-mono text-[11px] font-bold text-[#9c1f31]">
+                  {year}
+                </p>
+                <p className="mt-1 text-[11px] font-semibold leading-tight text-[#42191f]">
+                  {name}
+                </p>
+                <p className="mt-1 text-[10px] leading-tight text-[#75555a]">
+                  {event}
+                </p>
+                {index < 4 && (
+                  <ArrowRight className="absolute -right-2 -top-[9px] size-3 text-[#9c1f31]/45" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-px bg-[#6c2330]/15 sm:grid-cols-2">
+          <a
+            className="group flex items-center gap-4 bg-[#fffaf6] p-4 transition hover:bg-[#f8eeea]"
+            href="https://c21u.gatech.edu/directory/person/richard-d-lipton"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-[0_12px_28px_rgba(91,30,42,.16)]">
+              <Image
+                alt="Richard Lipton"
+                className="object-cover"
+                fill
+                sizes="96px"
+                src="/richard-lipton.jpg"
+              />
+            </div>
+            <div>
+              <p className={label}>Origen</p>
+              <p className="mt-2 text-lg font-semibold text-[#42191f]">
+                Richard Lipton
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-[#75555a]">
+                Propuso la idea como estudiante en 1971.
+              </p>
+            </div>
+          </a>
+          <a
+            className="group flex items-center gap-4 bg-[#fffaf6] p-4 transition hover:bg-[#f8eeea]"
+            href="https://blog.cleancoder.com/uncle-bob/2016/06/10/MutationTesting.html"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-[0_12px_28px_rgba(91,30,42,.16)]">
+              <Image
+                alt="Robert C. Martin, Uncle Bob"
+                className="object-cover object-top"
+                fill
+                sizes="96px"
+                src="/uncle-bob.jpg"
+              />
+            </div>
+            <div>
+              <p className={label}>Popularización reciente</p>
+              <p className="mt-2 text-lg font-semibold text-[#42191f]">
+                Uncle Bob
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-[#75555a]">
+                En 2016 escribió que PIT lo había dejado impresionado.
+              </p>
+            </div>
+          </a>
+        </div>
+
+        <blockquote className="bg-[#42191f] px-5 py-4 text-sm font-medium leading-relaxed text-[#fffaf6]">
+          <span className="mr-3 font-mono text-[10px] uppercase tracking-[.14em] text-[#f4a5b1]">
+            Encuesta Ruby Sur
+          </span>
+          “Quisiera que nos tomemos un tiempo para bardear al v-word p-word de
+          Uncle Bob”
+        </blockquote>
       </div>
     );
 
@@ -2400,14 +2562,14 @@ export default function Home() {
                           <WelcomeTitle />
                         ) : (
                           <h1
-                            className={`max-w-3xl font-semibold tracking-[-.055em] text-[#2a171a] ${['survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'transfer'].includes(current.visual) ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-4xl sm:text-6xl lg:text-7xl'}`}
+                            className={`max-w-3xl font-semibold tracking-[-.055em] text-[#2a171a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'transfer'].includes(current.visual) ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-4xl sm:text-6xl lg:text-7xl'}`}
                           >
                             {current.title}
                           </h1>
                         )}
                         {current.copy && (
                           <p
-                            className={`mt-7 max-w-2xl leading-relaxed text-[#75555a] ${['survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'transfer'].includes(current.visual) ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}
+                            className={`mt-7 max-w-2xl leading-relaxed text-[#75555a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'transfer'].includes(current.visual) ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}
                           >
                             {current.copy}
                           </p>
