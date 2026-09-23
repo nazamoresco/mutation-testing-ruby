@@ -25,8 +25,8 @@ module MiniMutant
       pid = fork do
         reader.close
         result = begin
-          mutated_source = SourceRewriter.replace(@discoverer.source, mutation)
-          RuntimePatch.apply(@discoverer.subject.source_path, mutated_source)
+          mutated_source = Deparser.call(mutation.ast)
+          Inserter.apply(@discoverer.subject, mutated_source)
           test_suite.call
           Result.new(mutation:, status: :alive, error_message: nil)
         rescue Exception => error # assertions and load failures both kill a mutant

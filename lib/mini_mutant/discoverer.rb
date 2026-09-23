@@ -2,7 +2,6 @@
 
 module MiniMutant
   # Prism finds syntax. We keep only operator calls inside the selected DefNode.
-  # No AST is re-serialized: offsets from Prism are used to patch the source text.
   class Discoverer
     REPLACEMENTS = {
       ">" => [">=", "<"],
@@ -19,26 +18,21 @@ module MiniMutant
 
     def initialize(subject)
       @subject = subject
-      @source = File.binread(subject.source_path)
+      @source_file = SourceFile.load(subject.source_path)
     end
 
-    attr_reader :source, :subject
+    attr_reader :source_file, :subject
+
+    def source
+      source_file.source
+    end
 
     def ast
-      @ast ||= begin
-        result = Prism.parse(source)
-        raise SyntaxError, result.errors.map(&:message).join(", ") unless result.success?
-
-        result.value
-      end
+      source_file.ast
     end
 
     def definition
-      @definition ||= nodes(ast).find do |node|
-        node.is_a?(Prism::DefNode) &&
-          node.name == subject.method_name &&
-          node.location.start_line == subject.source_line
-      end || raise("Could not find #{subject.display_name} in #{subject.source_path}")
+      @definition ||= MethodFinder.call(ast, subject)
     end
 
     def mutation_points
@@ -51,10 +45,9 @@ module MiniMutant
 
         location = node.message_loc
         MutationPoint.new(
+          node: node,
           operator: operator,
           replacements: replacements,
-          start_offset: location.start_offset,
-          end_offset: location.end_offset,
           line: location.start_line,
           column: location.start_column
         )
@@ -63,14 +56,20 @@ module MiniMutant
 
     def mutations
       mutation_points.flat_map do |point|
-        point.replacements.map { |replacement| Mutation.new(point:, replacement:) }
+        point.replacements.map do |replacement|
+          Mutation.new(
+            point:,
+            replacement:,
+            ast: OperatorReplacement.call(definition, point, replacement)
+          )
+        end
       end
     end
 
     private
 
     def nodes(node)
-      [node] + node.compact_child_nodes.flat_map { |child| nodes(child) }
+      MethodFinder.nodes(node)
     end
   end
 end

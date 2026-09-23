@@ -1,17 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "prism"
+require File.expand_path("../lib/mini_mutant", __dir__)
 require File.expand_path("../examples/calculator/lib/calculator", __dir__)
 
-method = Calculator.instance_method(:positive?)
-source_path, source_line = method.source_location
-source = File.binread(source_path)
-tree = Prism.parse(source).value
-nodes = ->(node) { [node] + node.compact_child_nodes.flat_map { |child| nodes.call(child) } }
-definition = nodes.call(tree).find { |node| node.is_a?(Prism::DefNode) && node.name == :positive? && node.location.start_line == source_line }
-call = nodes.call(definition).find { |node| node.is_a?(Prism::CallNode) && node.message_loc.slice == ">" }
-range = call.message_loc
+subject = MiniMutant::Subject.instance_method(Calculator, :positive?)
+point = MiniMutant::Discoverer.new(subject).mutation_points.first
 
-puts "Mutation point: #{range.slice.inspect}"
-puts "Range: bytes #{range.start_offset}...#{range.end_offset}, line #{range.start_line}"
+puts "Mutation point: #{point.node.class}(#{point.node.name.inspect})"
+puts "Alternatives: #{point.replacements.inspect}, line #{point.line}"
