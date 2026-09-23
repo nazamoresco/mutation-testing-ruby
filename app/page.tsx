@@ -27,6 +27,9 @@ type Visual =
   | 'contextual-oracle'
   | 'equivalent'
   | 'cost'
+  | 'coupling'
+  | 'meta-pipeline'
+  | 'testathons'
   | 'transfer'
   | 'reflection';
 type ImperativeStep =
@@ -393,14 +396,15 @@ const slides: Slide[] = [
     minutes: 1.5,
     visual: 'history',
     title: 'Una idea de 1971 que tardó décadas en volverse práctica',
-    copy: 'Richard Lipton propuso mutation testing en un trabajo estudiantil. DeMillo, Lipton y Sayward lo formalizaron en 1978; medio siglo después, herramientas rápidas y referentes como Uncle Bob lo acercaron a más equipos.',
+    copy: 'Richard Lipton propuso mutation testing en un trabajo estudiantil. DeMillo, Lipton y Sayward lo formalizaron en 1978; en 2026, la discusión sobre cómo verificar código escrito por agentes le dio una audiencia nueva.',
     annotation:
       'La idea no cambió tanto. Cambiaron el cómputo, las herramientas y el lugar donde aparece el feedback.',
     presenter: [
       'Aclaración histórica: no son 40 años. Desde el reporte de Lipton de 1971 pasaron más de cinco décadas.',
       'En 1978, DeMillo, Lipton y Sayward publicaron “Hints on Test Data Selection”.',
       'Mutant aparece en 2012; el estudio de GitHub registra un crecimiento claro de las herramientas prácticas desde fines de esa década.',
-      'En 2016, Uncle Bob escribió que una demo de PIT lo había dejado impresionado y lo presentó como una forma de recuperar confianza en una suite.',
+      'El artículo de Uncle Bob de 2016 fue un antecedente. La ola relevante para esta audiencia son sus posts de 2026 sobre agentes rodeados por tests, métricas, coverage y mutation testing.',
+      'No afirmes que un tweet demuestra adopción. Sí sirve para explicar por qué mucha gente escuchó el término por primera vez este año.',
       'Mostrá la respuesta de la encuesta como remate: la popularización también trae discusiones culturales alrededor de sus referentes.',
     ],
     claims: [
@@ -725,24 +729,91 @@ const slides: Slide[] = [
     visual: 'cost',
     title:
       'La primera optimización es ejecutar menos experimentos, pero mejores',
-    copy: 'Cada subject abre nuevos experimentos. Antes de escalar infraestructura, conviene reducir el espacio: código cambiado, zonas de alto riesgo, operadores valiosos y tests relevantes.',
+    copy: 'Google llevó mutation testing al code review con un ciclo deliberadamente pequeño: código cambiado y cubierto, como máximo un mutante por línea y feedback explícito para aprender qué no volver a mostrar.',
     annotation:
       'Buen candidato = una regresión cuesta + la suite es confiable + podemos acotar el alcance.',
     presenter: [
-      'Conectá las tres áreas del libro: generación, ejecución y análisis humano.',
-      'Empezá por los subjects: código cambiado, autorización, tenancy, dinero, límites y otras reglas donde fallar cuesta.',
-      'Priorizá incremental mutation y alcance por riesgo; después selección de tests, paralelismo y sampling.',
+      'Contá el loop de Google: limitar a líneas cambiadas y cubiertas, elegir como máximo un mutante por línea y mostrarlo dentro del code review.',
+      'Cada sugerencia permitía responder “Please fix” o “Not useful”. Ese feedback alimentó reglas para suprimir nodos áridos y seleccionar contextualmente.',
+      'La proporción de mutantes productivos subió de alrededor de 15% en el despliegue inicial a 89% después de aprender del uso real.',
+      'Sumá el filtro por criticidad: no todos los subjects merecen el mismo presupuesto.',
       'Recordá que un wait lento o una suite flaky se multiplica por cientos de mutantes.',
-      'Ubicá al LLM en triage y recuperación de contexto, no como reemplazo silencioso del oracle.',
     ],
     claims: [
+      'Google genera mutantes solamente sobre líneas cambiadas y cubiertas, con un máximo de uno por línea.',
+      'El feedback “Please fix” / “Not useful” permite aprender qué mutantes resultan productivos en cada contexto.',
       'Seleccionar subjects por cambio y criticidad reduce el coste antes de crear el primer mutante.',
-      'Acotar por cambio y riesgo suele ahorrar más que correr indiscriminadamente en más máquinas.',
       'Optimizar la suite base es requisito previo: cada ineficiencia se multiplica por mutante.',
     ],
   },
   {
     index: '21',
+    section: 'Mutantes y fallas reales',
+    minutes: 2,
+    visual: 'coupling',
+    title: 'En 70% de las fallas reales, un mutante podía avisar antes',
+    copy: 'En el dataset de bugs de alta prioridad de Google, siete de cada diez fallas estaban acopladas a un mutante que podía aparecer durante code review. El 30% restante muestra tanto límites de los operadores como límites del problema que estamos modelando.',
+    annotation:
+      'Agregar operadores aumenta el acoplamiento, pero también el coste y el ruido. La pregunta útil no es “¿podemos mutar más?”, sino “¿qué señal adicional compramos?”.',
+    presenter: [
+      'Acotá el resultado: 70% pertenece al dataset de bugs de alta prioridad del estudio, no es una constante universal.',
+      'Para entender el 30%, el paper inspeccionó una muestra manual de 50 bugs no acoplados.',
+      '23 no tenían un operador general razonable: configuración, entorno, protocolos, especificaciones de alto nivel o el algoritmo equivocado.',
+      '14 encontraban un operador demasiado débil y 13 un operador faltante, muchas veces sobre identificadores.',
+      'Conectá con el Oracle Problem: mutation testing puede señalar una diferencia, pero no inventa la fuente de verdad ni decide cuál algoritmo era el requerido.',
+      'Más operadores pueden mejorar el acoplamiento, pero si 1% extra exige duplicar mutantes, el precio puede no valer la señal.',
+    ],
+    claims: [
+      'El estudio reporta 70% de acoplamiento con bugs reales de alta prioridad.',
+      'La taxonomía 23/14/13 proviene de una muestra manual de 50 bugs no acoplados.',
+      'Más mutantes pueden aumentar cobertura de fallas y, a la vez, degradar coste y utilidad.',
+    ],
+  },
+  {
+    index: '22',
+    section: 'Mutation Testing en Meta',
+    minutes: 2,
+    visual: 'meta-pipeline',
+    title: 'Meta convierte una falla plausible en un test',
+    copy: 'ACH parte de issues reales de CI y del repositorio. Un LLM propone una falla del dominio; una cadena de filtros conserva las que compilan, pasan la suite y no parecen equivalentes. Otro LLM intenta producir el test que las expone.',
+    annotation:
+      'El resultado no entra directo a producción: llega como un diff normal, con resumen y plan de prueba, para atravesar code review y CI.',
+    presenter: [
+      'Leé el diagrama en dos mitades: arriba se fabrica una falla plausible; abajo se fabrica evidencia contra ella.',
+      'Los gates descartan fallas que no compilan, rompen la suite existente o parecen equivalentes.',
+      'El test candidato debe compilar, pasar sobre el original y fallar sobre la versión mutada.',
+      'En 10.795 clases Kotlin de Android, el pipeline produjo 31.677 candidatos; 9.095 compilaron y pasaron, 4.660 se consideraron no equivalentes y finalmente se generaron 571 tests.',
+      'No es generación libre de tests: la mutación funciona como una especificación ejecutable del hueco que el test debe cubrir.',
+    ],
+    claims: [
+      'ACH combina generación de fallas, filtros determinísticos, detección de equivalencia y generación de tests.',
+      'Cada test debe pasar sobre el original y fallar sobre la falla generada.',
+      'El output se entrega al proceso habitual de code review y CI.',
+    ],
+  },
+  {
+    index: '23',
+    section: 'Test-a-thons en Meta',
+    minutes: 1.5,
+    visual: 'testathons',
+    title: 'La última palabra la tuvo el code review',
+    copy: 'Meta llevó los tests generados a test-a-thons con equipos reales. Los developers revisaron 191 diffs como cualquier cambio de producción: 140 fueron aceptados y todos los aceptados terminaron desplegados.',
+    annotation:
+      'Un test podía ser valioso aunque no fuera estrictamente de privacidad: también se aceptaron casos que agregaban cobertura o capturaban bordes difíciles.',
+    presenter: [
+      'La tasa global fue 73% aceptados: 140 de 191. Los 51 restantes fueron rechazados.',
+      'Entre 175 tests clasificados por relevancia, 63 —36%— fueron considerados posible o definitivamente vinculados con privacidad.',
+      'Messenger aceptó 90 de 100; WhatsApp, 50 de 91. La diferencia ilustra que la cultura y el criterio del equipo importan tanto como el pipeline.',
+      'Los test-a-thons no son una ceremonia de validación del LLM: son el lugar donde conocimiento local, estilo y utilidad se convierten en decisión.',
+    ],
+    claims: [
+      '140 de 191 tests revisados fueron aceptados (73%).',
+      '63 de 175 tests clasificados fueron posible o definitivamente relevantes para privacidad (36%).',
+      'Todos los tests aceptados llegaron a producción.',
+    ],
+  },
+  {
+    index: '24',
     section: 'Más allá del unit test',
     minutes: 1.5,
     visual: 'transfer',
@@ -764,7 +835,7 @@ const slides: Slide[] = [
     ],
   },
   {
-    index: '22',
+    index: '25',
     section: 'Reflexión',
     minutes: 3,
     visual: 'reflection',
@@ -874,8 +945,13 @@ const sources = [
         'https://c21u.gatech.edu/directory/person/richard-d-lipton',
       ],
       [
+        'Uncle Bob — agentes y mutation testing (2026)',
+        'El post viral que puso mutation testing dentro de una batería de controles para código generado por agentes.',
+        'https://x.com/unclebobmartin/status/2080257779395154409',
+      ],
+      [
         'Uncle Bob — Mutation Testing (2016)',
-        'El artículo donde Robert C. Martin relata su redescubrimiento de la técnica mediante PIT.',
+        'El antecedente donde Robert C. Martin relata su redescubrimiento de la técnica mediante PIT.',
         'https://blog.cleancoder.com/uncle-bob/2016/06/10/MutationTesting.html',
       ],
     ],
@@ -1616,8 +1692,8 @@ function Diagram({ visual }: { visual: Visual }) {
               ['1971', 'Lipton', 'primer reporte'],
               ['1978', 'DeMillo · Lipton · Sayward', 'paper seminal'],
               ['2012', 'Mutant', 'Ruby'],
-              ['2016', 'Uncle Bob', 'vuelve a impulsarlo'],
-              ['2022', '3.581 repos', 'evidencia en GitHub'],
+              ['2016', 'PIT', 'lo sorprende'],
+              ['2026', 'Agentes + tests', 'nueva audiencia'],
             ].map(([year, name, event], index) => (
               <div
                 className="relative border-t-2 border-[#9c1f31]/25 pt-3"
@@ -1669,7 +1745,7 @@ function Diagram({ visual }: { visual: Visual }) {
           </a>
           <a
             className="group flex items-center gap-4 bg-[#fffaf6] p-4 transition hover:bg-[#f8eeea]"
-            href="https://blog.cleancoder.com/uncle-bob/2016/06/10/MutationTesting.html"
+            href="https://x.com/unclebobmartin/status/2080257779395154409"
             rel="noreferrer"
             target="_blank"
           >
@@ -1683,12 +1759,13 @@ function Diagram({ visual }: { visual: Visual }) {
               />
             </div>
             <div>
-              <p className={label}>Popularización reciente</p>
+              <p className={label}>Nueva ola · 2026</p>
               <p className="mt-2 text-lg font-semibold text-[#42191f]">
                 Uncle Bob
               </p>
               <p className="mt-1 text-xs leading-relaxed text-[#75555a]">
-                En 2016 escribió que PIT lo había dejado impresionado.
+                Sus posts sobre agentes y verificación reactivaron la
+                conversación.
               </p>
             </div>
           </a>
@@ -2218,27 +2295,27 @@ function Diagram({ visual }: { visual: Visual }) {
         {[
           {
             number: '01',
-            title: 'Seleccionar menos subjects',
-            cost: 'superficie bajo experimento',
-            actions: 'código cambiado · criticidad · paths y owners',
+            title: 'Acotar el cambio',
+            cost: 'menos superficie',
+            actions: 'solamente líneas cambiadas + cubiertas · criticidad',
           },
           {
             number: '02',
-            title: 'Generar menos',
-            cost: 'espacio de mutantes',
-            actions: 'incremental · operadores selectivos · foco por riesgo',
+            title: 'Muestrear la línea',
+            cost: 'menos mutantes',
+            actions: 'como máximo 1 mutante por línea · selección contextual',
           },
           {
             number: '03',
-            title: 'Ejecutar menos',
-            cost: 'tiempo de suite y CI',
-            actions: 'tests relevantes · suite rápida · paralelismo · sampling',
+            title: 'Ejecutar con foco',
+            cost: 'menos CI',
+            actions: 'tests relevantes · suite rápida · paralelismo',
           },
           {
             number: '04',
-            title: 'Revisar mejor',
-            cost: 'atención humana',
-            actions: 'agrupar · priorizar · recuperar contexto con LLMs',
+            title: 'Aprender del feedback',
+            cost: 'menos ruido futuro',
+            actions: 'Please fix / Not useful → suprimir nodos áridos',
           },
         ].map((item) => (
           <div
@@ -2257,9 +2334,246 @@ function Diagram({ visual }: { visual: Visual }) {
             </p>
           </div>
         ))}
-        <p className="border-l-2 border-[#9c1f31] pl-4 text-sm font-semibold text-[#42191f]">
-          Acotar primero. Escalar después.
-        </p>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-l-2 border-[#9c1f31] pl-4">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#75555a]">
+              despliegue inicial
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-[#75555a]">≈15%</p>
+          </div>
+          <ArrowRight className="size-5 text-[#9c1f31]" />
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#9c1f31]">
+              feedback incorporado
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-[#9c1f31]">89%</p>
+          </div>
+        </div>
+      </div>
+    );
+
+  if (visual === 'coupling')
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-[1.4fr_.6fr]">
+          <div className="border border-[#9c1f31] bg-[#9c1f31] p-5 text-white shadow-[0_16px_40px_rgba(156,31,49,.16)]">
+            <p className="font-mono text-[10px] uppercase tracking-[.14em] text-white/65">
+              bugs de alta prioridad
+            </p>
+            <p className="mt-3 text-6xl font-semibold tracking-[-.06em]">70%</p>
+            <p className="mt-2 text-sm font-semibold">acoplados a un mutante</p>
+            <p className="mt-2 text-xs leading-relaxed text-white/70">
+              Una señal equivalente podía aparecer durante code review.
+            </p>
+          </div>
+          <div className="border border-[#6c2330]/20 bg-[#fffdfb] p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#75555a]">
+              límite observado
+            </p>
+            <p className="mt-3 text-5xl font-semibold tracking-[-.06em] text-[#6b3d7a]">
+              30%
+            </p>
+            <p className="mt-2 text-sm font-semibold text-[#42191f]">
+              sin acoplamiento
+            </p>
+          </div>
+        </div>
+
+        <div className={card}>
+          <div className="flex items-center justify-between gap-4">
+            <p className={label}>Por qué falló · muestra manual</p>
+            <span className="font-mono text-[10px] text-[#75555a]">n = 50</span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {[
+              [
+                '23',
+                'No existe un operador general',
+                'config · entorno · protocolo · algoritmo',
+              ],
+              [
+                '14',
+                'El operador era demasiado débil',
+                'control de flujo · declaraciones',
+              ],
+              [
+                '13',
+                'Faltaba un operador',
+                'frecuentemente cambios de identificador',
+              ],
+            ].map(([value, title, detail]) => (
+              <div className="grid grid-cols-[34px_1fr] gap-3" key={value}>
+                <span className="grid size-8 place-items-center rounded-full bg-[#f4e4e6] font-mono text-xs font-bold text-[#9c1f31]">
+                  {value}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-[#42191f]">
+                    {title}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-[#75555a]">
+                    {detail}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-l-2 border-[#6b3d7a] pl-4 text-xs">
+          <span className="font-semibold text-[#42191f]">más operadores</span>
+          <ArrowRight className="size-4 text-[#6b3d7a]" />
+          <span className="text-[#75555a]">
+            más acoplamiento · más coste · más ruido
+          </span>
+        </div>
+      </div>
+    );
+
+  if (visual === 'meta-pipeline')
+    return (
+      <div className="overflow-hidden border border-[#6c2330]/20 bg-[#fffdfb] shadow-[0_18px_50px_rgba(91,30,42,.09)]">
+        <div className="border-b border-[#6c2330]/15 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className={label}>01 · Fabricar una falla plausible</p>
+            <span className="font-mono text-[9px] text-[#75555a]">
+              issues + repo
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 text-center">
+            <div className="border border-[#6c2330]/15 bg-[#fffaf6] px-2 py-3">
+              <p className="text-xs font-semibold">Issue real de CI</p>
+              <p className="mt-1 font-mono text-[9px] text-[#75555a]">
+                + código + tests
+              </p>
+            </div>
+            <ArrowRight className="size-4 text-[#9c1f31]" />
+            <div className="border border-[#6b3d7a]/30 bg-[#f7f0fa] px-2 py-3">
+              <Sparkles className="mx-auto size-4 text-[#6b3d7a]" />
+              <p className="mt-1 text-xs font-semibold">LLM propone fault</p>
+            </div>
+            <ArrowRight className="size-4 text-[#9c1f31]" />
+            <div className="border border-[#9c1f31] bg-[#fff5f4] px-2 py-3">
+              <p className="text-xs font-semibold">Mutante útil</p>
+              <p className="mt-1 font-mono text-[9px] text-[#75555a]">
+                build · pass · ≠ equivalent
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#42191f] p-4 text-white">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#f4a5b1]">
+              02 · Fabricar la evidencia
+            </p>
+            <span className="font-mono text-[9px] text-white/55">
+              mutante + repo
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 text-center">
+            <div className="border border-white/20 bg-white/5 px-2 py-3">
+              <Sparkles className="mx-auto size-4 text-[#f4a5b1]" />
+              <p className="mt-1 text-xs font-semibold">LLM genera test</p>
+            </div>
+            <ArrowRight className="size-4 text-[#f4a5b1]" />
+            <div className="border border-white/20 bg-white/5 px-2 py-3">
+              <p className="text-xs font-semibold">Triple gate</p>
+              <p className="mt-1 font-mono text-[9px] text-white/55">
+                build · pasa original · mata fault
+              </p>
+            </div>
+            <ArrowRight className="size-4 text-[#f4a5b1]" />
+            <div className="border border-[#f4a5b1]/55 bg-[#9c1f31]/40 px-2 py-3">
+              <p className="text-xs font-semibold">Diff + test plan</p>
+              <p className="mt-1 font-mono text-[9px] text-white/55">
+                code review · CI
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 divide-x divide-[#6c2330]/15 border-t border-[#6c2330]/15">
+          {[
+            ['10.795', 'clases'],
+            ['9.095', 'build + pass'],
+            ['4.660', 'no equivalentes'],
+            ['571', 'tests'],
+          ].map(([value, caption]) => (
+            <div className="p-3 text-center" key={caption}>
+              <p className="font-mono text-sm font-bold text-[#9c1f31]">
+                {value}
+              </p>
+              <p className="mt-1 text-[9px] uppercase tracking-wide text-[#75555a]">
+                {caption}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+  if (visual === 'testathons')
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-[1.25fr_.75fr]">
+          <div className="border border-[#9c1f31] bg-[#9c1f31] p-5 text-white">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[.14em] text-white/65">
+                  aceptados
+                </p>
+                <p className="mt-2 text-6xl font-semibold tracking-[-.06em]">
+                  73%
+                </p>
+              </div>
+              <p className="pb-2 font-mono text-sm text-white/70">140 / 191</p>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full w-[73%] rounded-full bg-white" />
+            </div>
+            <p className="mt-3 text-xs text-white/70">
+              Todos los aceptados llegaron a producción.
+            </p>
+          </div>
+          <div className="border border-[#6c2330]/20 bg-[#fffdfb] p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#75555a]">
+              relevancia de privacidad
+            </p>
+            <p className="mt-2 text-5xl font-semibold tracking-[-.06em] text-[#6b3d7a]">
+              36%
+            </p>
+            <p className="mt-2 font-mono text-xs text-[#75555a]">63 / 175</p>
+          </div>
+        </div>
+
+        <div className={card}>
+          <p className={label}>La aceptación también fue cultural</p>
+          <div className="mt-5 space-y-4">
+            {[
+              ['Messenger', '90 / 100', '90%', 'w-[90%]'],
+              ['WhatsApp', '50 / 91', '56%', 'w-[56%]'],
+            ].map(([team, fraction, percent, width]) => (
+              <div key={team}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-[#42191f]">{team}</span>
+                  <span className="font-mono text-[#75555a]">
+                    {fraction} · {percent}
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#eadbdd]">
+                  <div
+                    className={`h-full rounded-full bg-[#9c1f31] ${width}`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 border-l-2 border-[#6b3d7a] pl-4 text-xs leading-relaxed text-[#75555a]">
+          <MessageSquareText className="size-5 shrink-0 text-[#6b3d7a]" />
+          El LLM propone. El equipo decide utilidad, estilo y relevancia.
+        </div>
       </div>
     );
 
@@ -2562,14 +2876,14 @@ export default function Home() {
                           <WelcomeTitle />
                         ) : (
                           <h1
-                            className={`max-w-3xl font-semibold tracking-[-.055em] text-[#2a171a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'transfer'].includes(current.visual) ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-4xl sm:text-6xl lg:text-7xl'}`}
+                            className={`max-w-3xl font-semibold tracking-[-.055em] text-[#2a171a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'coupling', 'meta-pipeline', 'testathons', 'transfer'].includes(current.visual) ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-4xl sm:text-6xl lg:text-7xl'}`}
                           >
                             {current.title}
                           </h1>
                         )}
                         {current.copy && (
                           <p
-                            className={`mt-7 max-w-2xl leading-relaxed text-[#75555a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'transfer'].includes(current.visual) ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}
+                            className={`mt-7 max-w-2xl leading-relaxed text-[#75555a] ${['history', 'survey', 'spaces', 'oracle', 'contextual-oracle', 'equivalent', 'cost', 'coupling', 'meta-pipeline', 'testathons', 'transfer'].includes(current.visual) ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'}`}
                           >
                             {current.copy}
                           </p>
