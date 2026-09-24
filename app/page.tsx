@@ -332,23 +332,29 @@ const mutationPreparation = `${preparation}
 load "mini_mutant/operator_replacement.rb"
 mutation = MiniMutant::OperatorReplacement.call(original, point)`;
 
-const astPayloadRuby = `def ast_payload(node)
-  detail = case node
-  when Prism::DefNode, Prism::RequiredParameterNode, Prism::LocalVariableReadNode
-    ":#{node.name}"
-  when Prism::CallNode
-    "name: #{node.name.inspect}"
-  when Prism::IntegerNode
-    node.value.to_s
-  else
-    ""
-  end
+const astPayloadSource = `require "json"
 
-  {
-    type: node.class.name.delete_prefix("Prism::"),
-    detail: detail,
-    children: node.compact_child_nodes.map { |child| ast_payload(child) }
-  }
+module MiniMutant
+  module AstPayload
+    def self.call(node)
+      detail = case node
+      when Prism::DefNode, Prism::RequiredParameterNode, Prism::LocalVariableReadNode
+        ":#{node.name}"
+      when Prism::CallNode
+        "name: #{node.name.inspect}"
+      when Prism::IntegerNode
+        node.value.to_s
+      else
+        ""
+      end
+
+      {
+        type: node.class.name.delete_prefix("Prism::"),
+        detail: detail,
+        children: node.compact_child_nodes.map { |child| call(child) }
+      }
+    end
+  end
 end`;
 
 const runnableSteps: Record<ImperativeStep, string> = {
@@ -358,42 +364,34 @@ load "mini_mutant/subject.rb"
 
 subject = MiniMutant::Subject.new(owner: Citizen, name: :adult?)
 "subject → Citizen#adult? @ #{subject.path}:#{subject.line}"`,
-  source: `require "json"
-load "citizen.rb"
+  source: `load "citizen.rb"
 load "mini_mutant/subject.rb"
 load "mini_mutant/source_file.rb"
+load "mini_mutant/ast_payload.rb"
 
 subject = MiniMutant::Subject.new(owner: Citizen, name: :adult?)
 source_file = MiniMutant::SourceFile.load(subject.path)
 
-${astPayloadRuby}
-
-"__AST__#{JSON.generate(ast_payload(source_file.ast))}"`,
-  ast: `require "json"
-load "citizen.rb"
+"__AST__#{JSON.generate(MiniMutant::AstPayload.call(source_file.ast))}"`,
+  ast: `load "citizen.rb"
 load "mini_mutant/subject.rb"
 load "mini_mutant/source_file.rb"
 load "mini_mutant/method_finder.rb"
+load "mini_mutant/ast_payload.rb"
 
 subject = MiniMutant::Subject.new(owner: Citizen, name: :adult?)
 source_file = MiniMutant::SourceFile.load(subject.path)
 definition = MiniMutant::MethodFinder.call(source_file, subject)
 
-${astPayloadRuby}
-
-"__AST__#{JSON.generate(ast_payload(definition))}"`,
-  point: `require "json"
+"__AST__#{JSON.generate(MiniMutant::AstPayload.call(definition))}"`,
+  point: `load "mini_mutant/ast_payload.rb"
 ${preparation}
 
-${astPayloadRuby}
-
-"__AST__#{JSON.generate(ast_payload(original))}"`,
-  replacement: `require "json"
+"__AST__#{JSON.generate(MiniMutant::AstPayload.call(original))}"`,
+  replacement: `load "mini_mutant/ast_payload.rb"
 ${mutationPreparation}
 
-${astPayloadRuby}
-
-"__AST__#{JSON.generate(ast_payload(mutation.ast))}"`,
+"__AST__#{JSON.generate(MiniMutant::AstPayload.call(mutation.ast))}"`,
   patch: `${mutationPreparation}
 load "mini_mutant/deparser.rb"
 "deparsed Ruby:\\n#{MiniMutant::Deparser.call(mutation.ast)}"`,
@@ -452,15 +450,13 @@ const slides: Slide[] = [
     visual: 'history',
     title: 'Una idea de 1971 que tardó décadas en volverse práctica',
     copy: 'Richard Lipton propuso mutation testing en un trabajo estudiantil. DeMillo, Lipton y Sayward lo formalizaron en 1978; en 2026, la discusión sobre cómo verificar código escrito por agentes le dio una audiencia nueva.',
-    annotation:
-      'La idea no cambió tanto. Cambiaron el cómputo, las herramientas y el lugar donde aparece el feedback.',
+    annotation: '',
     presenter: [
       'Aclaración histórica: no son 40 años. Desde el reporte de Lipton de 1971 pasaron más de cinco décadas.',
       'En 1978, DeMillo, Lipton y Sayward publicaron “Hints on Test Data Selection”.',
       'Mutant aparece en 2012; el estudio de GitHub registra un crecimiento claro de las herramientas prácticas desde fines de esa década.',
       'El artículo de Uncle Bob de 2016 fue un antecedente. La ola relevante para esta audiencia son sus posts de 2026 sobre agentes rodeados por tests, métricas, coverage y mutation testing.',
       'No afirmes que un tweet demuestra adopción. Sí sirve para explicar por qué mucha gente escuchó el término por primera vez este año.',
-      'Mostrá la respuesta de la encuesta como remate: la popularización también trae discusiones culturales alrededor de sus referentes.',
     ],
     claims: [
       'La primera propuesta se atribuye al reporte estudiantil de Richard Lipton de 1971.',
@@ -519,7 +515,8 @@ const slides: Slide[] = [
     step: 'contract',
     title: 'Código base',
     copy: '',
-    annotation: '',
+    annotation:
+      'Pregunta al público: ¿cuál es el cambio mínimo, válido en Ruby, que podría sobrevivir a estos tests?',
     presenter: [
       'Mostrá `citizen.rb` y después la suite incompleta: prueba 17 y 19, pero no el borde de 18.',
       'Preguntá al público: “¿Cuál es la alteración más pequeña, válida en Ruby, que cambia la semántica y aun así deja los tests en verde?”.',
@@ -899,18 +896,20 @@ const slides: Slide[] = [
     title: 'Mutant es un mecanismo que podemos tomar prestado',
     copy: 'La idea no depende de un método Ruby: alterar deliberadamente una parte del sistema, ejecutar una observación y comprobar si alguien nota el cambio. Podemos aplicar semantic reduction sobre una aplicación completa y usar tests funcionales o E2E como detector.',
     annotation:
-      'Si quitamos un comportamiento relevante y el recorrido E2E sigue verde, el test comprobaba actividad, no necesariamente el resultado del negocio.',
+      'Los métodos o clases con muchos mutantes —sobre todo si sobreviven— también funcionan como señal de hotspots: candidatos para revisar complejidad y priorizar refactorings.',
     presenter: [
       'Generalizá el ciclo que acabamos de construir: transformar, ejecutar en aislamiento y observar el veredicto.',
       'Dá ejemplos de semantic reduction a nivel aplicación: omitir una validación, no persistir un cambio, suprimir una autorización o saltar una llamada externa.',
       'Ejemplo: el checkout muestra “Compra confirmada”, pero mutamos el sistema para no crear la orden. El E2E debería fallar verificando el resultado persistido.',
       'Conectalo con Chaos Monkey: en vez de mutar el AST, termina una instancia o degrada infraestructura para comprobar una propiedad de resiliencia.',
+      'Usá la densidad y supervivencia de mutantes como una señal de hotspots para refactoring, no como una métrica absoluta de complejidad.',
       'Aclarar que el coste sube: necesitamos aislamiento de datos, restauración confiable y selección inteligente de recorridos.',
     ],
     claims: [
       'Mutation testing es un protocolo experimental, no solamente una herramienta para unit tests.',
       'Semantic reduction permite preguntar qué resultados de negocio observan realmente los tests E2E.',
       'Chaos engineering reutiliza el mismo patrón sobre infraestructura y propiedades de resiliencia.',
+      'La concentración de mutantes puede ayudar a priorizar métodos o clases que conviene simplificar.',
     ],
   },
   {
@@ -937,7 +936,7 @@ const slides: Slide[] = [
     minutes: 5,
     visual: 'questions',
     title: '¿Preguntas?',
-    copy: 'Objeciones, casos reales y mutantes que te parezcan injustos: conversemos.',
+    copy: '',
     annotation: '',
     presenter: [
       'Abrí la conversación: ¿qué parte de su código probarían primero con mutation testing?',
@@ -1124,6 +1123,7 @@ type LabFile = { name: string; code: string };
 const architectureFiles: LabFile[] = [
   { name: 'mini_mutant/subject.rb', code: subjectSource },
   { name: 'mini_mutant/source_file.rb', code: sourceFileSource },
+  { name: 'mini_mutant/ast_payload.rb', code: astPayloadSource },
   { name: 'mini_mutant/method_finder.rb', code: methodFinderSource },
   { name: 'mini_mutant/mutation.rb', code: mutationSource },
   {
@@ -1141,14 +1141,14 @@ const architectureFiles: LabFile[] = [
 
 const architectureDepth: Record<Exclude<ImperativeStep, 'contract'>, number> = {
   location: 1,
-  source: 2,
-  ast: 3,
-  point: 4,
-  replacement: 5,
-  patch: 6,
-  insertion: 7,
-  verdict: 8,
-  simplification: 9,
+  source: 3,
+  ast: 4,
+  point: 5,
+  replacement: 6,
+  patch: 7,
+  insertion: 8,
+  verdict: 9,
+  simplification: 10,
 };
 
 function labFilesFor(step: ImperativeStep, initialCode: string): LabFile[] {
@@ -1657,7 +1657,14 @@ function MiniMutantSlide({
   if (slide.step === 'contract') {
     return (
       <div className="grid gap-8 lg:grid-cols-[.3fr_1.7fr] lg:items-start xl:gap-14">
-        <SlideHeading slide={slide} />
+        <div>
+          <SlideHeading slide={slide} />
+          {slide.annotation && (
+            <p className="mt-8 max-w-sm border-l-2 border-[#9c1f31] pl-4 text-sm leading-relaxed text-[#75555a]">
+              {slide.annotation}
+            </p>
+          )}
+        </div>
         {lab}
       </div>
     );
@@ -1985,14 +1992,6 @@ function Diagram({ visual }: { visual: Visual }) {
             </div>
           </a>
         </div>
-
-        <blockquote className="bg-[#42191f] px-5 py-4 text-sm font-medium leading-relaxed text-[#fffaf6]">
-          <span className="mr-3 font-mono text-[10px] uppercase tracking-[.14em] text-[#f4a5b1]">
-            Encuesta Ruby Sur
-          </span>
-          “Quisiera que nos tomemos un tiempo para bardear al v-word p-word de
-          Uncle Bob”
-        </blockquote>
       </div>
     );
 
@@ -2173,9 +2172,12 @@ function Diagram({ visual }: { visual: Visual }) {
             ))}
           </div>
         </div>
-        <p className="border-t border-[#6c2330]/15 px-5 py-2 font-mono text-[9px] text-[#75555a]">
-          Encuesta previa Ruby Sur · 18–22 sep 2026
-        </p>
+        <blockquote className="border-t border-[#6c2330]/15 bg-[#42191f] px-5 py-3 text-sm font-medium text-[#fffaf6]">
+          <span className="mr-3 font-mono text-[9px] uppercase tracking-[.14em] text-[#f4a5b1]">
+            Respuesta abierta
+          </span>
+          “Para mutar tests primero tenés que tener tests”
+        </blockquote>
       </div>
     );
   }
@@ -2495,7 +2497,7 @@ function Diagram({ visual }: { visual: Visual }) {
           className={`${card} grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center`}
         >
           <div>
-            <p className={label}>Original · ejemplo ficticio</p>
+            <p className={label}>Original · ejemplo inventado</p>
             <p className="mt-2 font-mono text-base font-semibold">
               risk_score &gt;= 742
             </p>
@@ -2517,6 +2519,9 @@ function Diagram({ visual }: { visual: Visual }) {
             </p>
           </div>
         </div>
+        <p className="border-l-2 border-[#9c1f31] pl-3 text-xs leading-relaxed text-[#75555a]">
+          Ejemplo inventado para la charla; no proviene de los papers.
+        </p>
       </div>
     );
 
@@ -2947,7 +2952,7 @@ function Diagram({ visual }: { visual: Visual }) {
             </p>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-[1.05fr_.95fr]">
+        <div className="grid gap-3 sm:grid-cols-3">
           <div className="flex items-center gap-2 border-l-2 border-[#6b3d7a] py-2 pl-4 text-sm font-semibold text-[#42191f]">
             <CircleDot className="size-4 shrink-0 text-[#6b3d7a]" />
             Mutar → ejecutar → observar
@@ -2963,6 +2968,17 @@ function Diagram({ visual }: { visual: Visual }) {
               </span>
             </p>
           </div>
+          <div className="border border-[#9c1f31]/35 bg-[#fff5f4] px-4 py-3">
+            <p className="font-mono text-[9px] font-semibold uppercase tracking-[.13em] text-[#9c1f31]">
+              Hotspot de refactoring
+            </p>
+            <p className="mt-1 text-sm font-semibold text-[#42191f]">
+              Muchos mutantes
+              <span className="ml-2 font-normal text-[#75555a]">
+                señal para revisar complejidad
+              </span>
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -2970,45 +2986,8 @@ function Diagram({ visual }: { visual: Visual }) {
   if (visual === 'questions')
     return (
       <div className="relative min-h-[430px] overflow-hidden bg-[#42191f] p-7 text-[#fffaf6] shadow-[0_24px_65px_rgba(66,25,31,.2)] sm:p-10">
-        <div className="absolute -right-8 -top-24 font-mono text-[23rem] font-bold leading-none text-white/[.045]">
+        <div className="absolute inset-0 grid place-items-center font-mono text-[23rem] font-bold leading-none text-white/[.08]">
           ?
-        </div>
-        <div className="relative flex min-h-[350px] flex-col justify-between">
-          <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[#f4a5b1]">
-              Para abrir la conversación
-            </p>
-            <div className="mt-8 space-y-5">
-              {[
-                '¿Dónde empezarías?',
-                '¿Qué mutante te parece injusto?',
-                '¿Qué coste no comprarías?',
-              ].map((question) => (
-                <p
-                  className="border-l border-white/25 pl-4 text-xl font-semibold sm:text-2xl"
-                  key={question}
-                >
-                  {question}
-                </p>
-              ))}
-            </div>
-          </div>
-          <a
-            className="group flex items-center justify-between gap-4 border border-white/20 bg-white/[.06] px-4 py-3 transition hover:bg-white/[.1]"
-            href="https://github.com/nazamoresco/mutation-testing-ruby"
-            rel="noreferrer"
-            target="_blank"
-          >
-            <div>
-              <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#f4a5b1]">
-                Charla, código y fuentes
-              </p>
-              <p className="mt-1 text-sm font-semibold">
-                github.com/nazamoresco/mutation-testing-ruby
-              </p>
-            </div>
-            <ExternalLink className="size-4 text-[#f4a5b1] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </a>
         </div>
       </div>
     );
@@ -3114,6 +3093,14 @@ export default function Home() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isEditing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable);
+      if (isEditing) return;
+
       if (!sourcesOpen && event.key === 'ArrowRight')
         setActive((value) => Math.min(value + 1, slides.length - 1));
       if (!sourcesOpen && event.key === 'ArrowLeft')
@@ -3134,9 +3121,15 @@ export default function Home() {
     <main className="min-h-screen bg-[#fffaf6] text-[#2a171a] selection:bg-[#9c1f31] selection:text-[#fffaf6]">
       <header className="mx-auto flex max-w-[1800px] items-center justify-between border-b border-[#6c2330]/15 px-5 py-4 sm:px-8">
         <div className="flex items-center gap-3">
-          <span className="grid size-8 place-items-center bg-[#9c1f31] text-xs font-bold text-[#fffaf6]">
-            M
-          </span>
+          <a
+            aria-label="Mutant en GitHub"
+            className="grid h-8 min-w-14 place-items-center bg-[#9c1f31] px-2 font-mono text-[10px] font-bold lowercase tracking-[-.04em] text-[#fffaf6] transition hover:bg-[#7f1828]"
+            href="https://github.com/mbj/mutant"
+            rel="noreferrer"
+            target="_blank"
+          >
+            mutant
+          </a>
           <div>
             <p className="text-sm font-semibold tracking-tight">
               Mutation Testing en Ruby
