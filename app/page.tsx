@@ -333,7 +333,7 @@ const engineSource = `module MiniMutant
         ruby = Deparser.call(mutation.ast)
         status, error = Runner.call(subject:, mutation:, &tests)
         report(ruby, status, error)
-      end.join("\n")
+      end.join("\\n")
     end
 
     def self.report(ruby, status, error)
@@ -1117,9 +1117,47 @@ function RubyCode({ code, dark = false }: { code: string; dark?: boolean }) {
       let color = dark ? 'text-[#f8eeea]' : 'text-[#42191f]';
       if (token.startsWith('#'))
         color = dark ? 'text-[#9f8f92] italic' : 'text-[#9a7073] italic';
-      else if (/^['"]/.test(token))
+      else if (/^['"]/.test(token)) {
+        if (token.startsWith('"') && token.includes('#{')) {
+          return (
+            <span key={`${token}-${index}`}>
+              {token.split(/(#{[^}]*})/g).map((part, partIndex) => {
+                const interpolation = part.match(/^#{([\s\S]*)}$/);
+                if (!interpolation)
+                  return (
+                    <span
+                      className={dark ? 'text-[#ffb86c]' : 'text-[#a44a00]'}
+                      key={`${part}-${partIndex}`}
+                    >
+                      {part}
+                    </span>
+                  );
+
+                return (
+                  <span key={`${part}-${partIndex}`}>
+                    <span
+                      className={dark ? 'text-[#ff6b81]' : 'text-[#9c1f31]'}
+                    >
+                      {'#{'}
+                    </span>
+                    <span
+                      className={dark ? 'text-[#82aaff]' : 'text-[#6b3d7a]'}
+                    >
+                      {interpolation[1]}
+                    </span>
+                    <span
+                      className={dark ? 'text-[#ff6b81]' : 'text-[#9c1f31]'}
+                    >
+                      {'}'}
+                    </span>
+                  </span>
+                );
+              })}
+            </span>
+          );
+        }
         color = dark ? 'text-[#ffb86c]' : 'text-[#a44a00]';
-      else if (
+      } else if (
         /^(def|end|class|module|if|else|elsif|unless|do|case|when|return)$/.test(
           token,
         )
@@ -1232,7 +1270,7 @@ function RubyEditor({
   const height = tall ? 'min-h-[430px]' : 'min-h-[320px]';
 
   return (
-    <div className={`relative overflow-hidden bg-[#20181a] ${height}`}>
+    <div className={`relative flex-1 overflow-hidden bg-[#20181a] ${height}`}>
       <pre
         ref={preview}
         aria-hidden="true"
@@ -1242,7 +1280,7 @@ function RubyEditor({
       </pre>
       <textarea
         aria-label="Código Ruby ejecutable"
-        className={`relative z-10 w-full resize-y bg-transparent p-4 font-mono text-[13px] leading-6 text-transparent caret-[#fffaf6] outline-none selection:bg-[#9c1f31]/55 ${height}`}
+        className="absolute inset-0 z-10 h-full w-full resize-none bg-transparent p-4 font-mono text-[13px] leading-6 text-transparent caret-[#fffaf6] outline-none selection:bg-[#9c1f31]/55"
         onChange={(event) => onChange(event.target.value)}
         onScroll={(event) => {
           if (!preview.current) return;
@@ -1391,7 +1429,7 @@ end`);
           </Button>
         </div>
       </div>
-      <div className="grid md:grid-cols-[150px_minmax(0,1fr)]">
+      <div className="grid md:grid-cols-[230px_minmax(0,1fr)]">
         <aside className="border-b border-[#6c2330]/20 bg-[#2a171a] p-3 text-[#fffaf6] md:border-b-0 md:border-r">
           <p className="mb-2 px-2 font-mono text-[9px] font-bold uppercase tracking-[.14em] text-[#fffaf6]/45">
             Archivos
@@ -1401,14 +1439,14 @@ end`);
               <button
                 key={name}
                 onClick={() => setActiveFile(name)}
-                className={`block w-full px-2 py-2 text-left font-mono text-[11px] transition ${activeFile === name ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#fffaf6]/65 hover:bg-white/10 hover:text-[#fffaf6]'}`}
+                className={`block w-full px-2 py-2 text-left font-mono text-[10px] transition ${activeFile === name ? 'bg-[#9c1f31] text-[#fffaf6]' : 'text-[#fffaf6]/65 hover:bg-white/10 hover:text-[#fffaf6]'}`}
               >
                 {name}
               </button>
             ))}
           </div>
         </aside>
-        <div className="min-w-0">
+        <div className="flex min-h-0 min-w-0 flex-col">
           <div className="border-b border-white/10 bg-[#352729] px-4 py-2 font-mono text-[11px] text-[#fffaf6]/70">
             {activeFile}
           </div>
@@ -2944,9 +2982,54 @@ function Diagram({ visual }: { visual: Visual }) {
 
   if (visual === 'questions')
     return (
-      <div className="relative min-h-[430px] overflow-hidden bg-[#42191f] p-7 text-[#fffaf6] shadow-[0_24px_65px_rgba(66,25,31,.2)] sm:p-10">
-        <div className="absolute inset-0 grid place-items-center font-mono text-[23rem] font-bold leading-none text-white/[.08]">
+      <div className="relative min-h-[430px] overflow-hidden border border-[#42191f] bg-[#42191f] p-7 text-[#fffaf6] shadow-[0_24px_65px_rgba(66,25,31,.2)] sm:p-9">
+        <div className="absolute -right-8 -top-20 font-mono text-[20rem] font-bold leading-none text-white/[.055]">
           ?
+        </div>
+        <div className="relative flex min-h-[358px] flex-col justify-between">
+          <div>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[#f4a5b1]">
+              Para llevar
+            </p>
+            <p className="mt-5 max-w-md text-3xl font-semibold tracking-[-.04em] sm:text-4xl">
+              La charla, el código y la evidencia quedan abiertos.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              [
+                'Diapositivas',
+                'Versión online',
+                'https://mutation-testing-ruby.nazamoresco99.chatgpt.site/',
+              ],
+              [
+                'Repositorio',
+                'MiniMutant en GitHub',
+                'https://github.com/nazamoresco/mutation-testing-ruby',
+              ],
+              [
+                'Fuentes',
+                'Papers y lecturas',
+                'https://mutation-testing-ruby.nazamoresco99.chatgpt.site/?sources=1',
+              ],
+            ].map(([title, description, href]) => (
+              <a
+                className="group border border-white/20 bg-white/[.06] p-4 transition hover:-translate-y-0.5 hover:border-[#f4a5b1] hover:bg-white/[.1]"
+                href={href}
+                key={title}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <span className="flex items-center justify-between gap-3 text-sm font-semibold">
+                  {title}
+                  <ExternalLink className="size-3.5 text-[#f4a5b1]" />
+                </span>
+                <span className="mt-2 block text-xs text-white/60">
+                  {description}
+                </span>
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -3038,15 +3121,13 @@ export default function Home() {
     .reduce((total, slide) => total + slide.minutes, 0);
 
   useEffect(() => {
-    const requested = Number(
-      new URLSearchParams(window.location.search).get('slide'),
-    );
-    if (!Number.isInteger(requested) || requested < 1) return;
-
-    const timer = window.setTimeout(
-      () => setActive(Math.min(requested - 1, slides.length - 1)),
-      0,
-    );
+    const params = new URLSearchParams(window.location.search);
+    const requested = Number(params.get('slide'));
+    const timer = window.setTimeout(() => {
+      if (Number.isInteger(requested) && requested >= 1)
+        setActive(Math.min(requested - 1, slides.length - 1));
+      if (params.get('sources') === '1') setSourcesOpen(true);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
