@@ -30,12 +30,24 @@ class MiniMutantTest < Minitest::Test
     assert_equal ["*"], discount.mutation_points.map(&:operator)
   end
 
-  def test_rewriter_changes_only_the_prism_message_range
+  def test_operator_replacement_changes_the_ast_and_deparser_emits_ruby
     mutation = @discoverer.mutations.first
-    changed = MiniMutant::SourceRewriter.replace(@discoverer.source, mutation)
+    changed = MiniMutant::Deparser.call(mutation.ast)
+    mutated_call = @discoverer.send(:nodes, mutation.ast).find do |node|
+      node.is_a?(Prism::CallNode) && node.name == :>=
+    end
 
+    assert mutated_call
     assert_includes changed, "number >= 0"
-    assert_includes @discoverer.source, "number > 0"
+    assert_equal "number > 0", @discoverer.definition.body.body.first.location.slice
+  end
+
+  def test_semantic_simplification_replaces_the_decision_with_true
+    point = @discoverer.mutation_points.first
+    mutation = MiniMutant::SemanticSimplification.call(@discoverer.definition, point)
+
+    assert_equal "def positive?(number)\n  true\nend", MiniMutant::Deparser.call(mutation.ast)
+    assert_equal :>, point.node.name
   end
 
   def test_forked_runner_marks_a_boundary_mutant_killed_and_leaves_parent_intact
