@@ -32,7 +32,8 @@ type Visual =
   | 'meta-pipeline'
   | 'testathons'
   | 'transfer'
-  | 'reflection';
+  | 'reflection'
+  | 'questions';
 type ImperativeStep =
   | 'contract'
   | 'location'
@@ -929,6 +930,21 @@ const slides: Slide[] = [
       'La generación de código eleva el valor de la verificación.',
       'La siguiente capa interesante de herramientas puede ser la que prueba el output de la anterior.',
     ],
+  },
+  {
+    index: '27',
+    section: 'Preguntas',
+    minutes: 5,
+    visual: 'questions',
+    title: '¿Preguntas?',
+    copy: 'Objeciones, casos reales y mutantes que te parezcan injustos: conversemos.',
+    annotation: '',
+    presenter: [
+      'Abrí la conversación: ¿qué parte de su código probarían primero con mutation testing?',
+      'Si no aparecen preguntas, retomá el caso de borde: ¿qué otro mutante podría sobrevivir en Citizen#adult??',
+      'Recordá que la charla, el código y las fuentes quedan publicados.',
+    ],
+    claims: [],
   },
 ];
 
@@ -2951,6 +2967,52 @@ function Diagram({ visual }: { visual: Visual }) {
       </div>
     );
 
+  if (visual === 'questions')
+    return (
+      <div className="relative min-h-[430px] overflow-hidden bg-[#42191f] p-7 text-[#fffaf6] shadow-[0_24px_65px_rgba(66,25,31,.2)] sm:p-10">
+        <div className="absolute -right-8 -top-24 font-mono text-[23rem] font-bold leading-none text-white/[.045]">
+          ?
+        </div>
+        <div className="relative flex min-h-[350px] flex-col justify-between">
+          <div>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[#f4a5b1]">
+              Para abrir la conversación
+            </p>
+            <div className="mt-8 space-y-5">
+              {[
+                '¿Dónde empezarías?',
+                '¿Qué mutante te parece injusto?',
+                '¿Qué coste no comprarías?',
+              ].map((question) => (
+                <p
+                  className="border-l border-white/25 pl-4 text-xl font-semibold sm:text-2xl"
+                  key={question}
+                >
+                  {question}
+                </p>
+              ))}
+            </div>
+          </div>
+          <a
+            className="group flex items-center justify-between gap-4 border border-white/20 bg-white/[.06] px-4 py-3 transition hover:bg-white/[.1]"
+            href="https://github.com/nazamoresco/mutation-testing-ruby"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#f4a5b1]">
+                Charla, código y fuentes
+              </p>
+              <p className="mt-1 text-sm font-semibold">
+                github.com/nazamoresco/mutation-testing-ruby
+              </p>
+            </div>
+            <ExternalLink className="size-4 text-[#f4a5b1] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+          </a>
+        </div>
+      </div>
+    );
+
   return (
     <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr]">
       <div className={card}>
@@ -3030,10 +3092,9 @@ export default function Home() {
   const [presenterMode, setPresenterMode] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const current = slides[Math.min(active, slides.length - 1)];
-  const totalMinutes = slides.reduce(
-    (total, slide) => total + slide.minutes,
-    0,
-  );
+  const totalMinutes = slides
+    .filter((slide) => slide.visual !== 'questions')
+    .reduce((total, slide) => total + slide.minutes, 0);
   const minutesBefore = slides
     .slice(0, active)
     .reduce((total, slide) => total + slide.minutes, 0);
