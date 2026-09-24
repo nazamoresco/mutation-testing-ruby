@@ -272,7 +272,6 @@ const inserterSource = `module MiniMutant
   class Inserter
     def self.with(subject, ruby)
       original = subject.owner.instance_method(subject.name)
-      # Keep source_location and backtraces aligned with the original method.
       subject.owner.class_eval(ruby, subject.path, subject.line)
       yield
     ensure
@@ -327,7 +326,10 @@ const engineSource = `module MiniMutant
       raise "baseline failed" unless tests.call
 
       point = MutationPoint.find(subject_ast)
-      mutations = [SemanticSimplification.call(subject_ast, point)]
+      mutations = [
+        OperatorReplacement.call(subject_ast, point),
+        SemanticSimplification.call(subject_ast, point)
+      ]
 
       mutations.map do |mutation|
         ruby = Deparser.call(mutation.ast)
@@ -441,6 +443,7 @@ load "mini_mutant/subject.rb"
 load "mini_mutant/source_file.rb"
 load "mini_mutant/method_finder.rb"
 load "mini_mutant/mutation.rb"
+load "mini_mutant/operator_replacement.rb"
 load "mini_mutant/deparser.rb"
 load "mini_mutant/inserter.rb"
 load "mini_mutant/runner.rb"
@@ -735,15 +738,16 @@ const slides: Slide[] = [
     minutes: 1,
     visual: 'imperative',
     step: 'simplification',
-    title: 'SemanticSimplification elimina la decisión completa',
+    title: 'Engine ejecuta las dos familias de operadores',
     copy: '',
     annotation: '',
     code: 'CallNode(:>=) → TrueNode\n# def adult?(age)\n#   true\n# end',
     presenter: [
-      'Conectá esta implementación con las dos familias que acabamos de presentar.',
-      'Ejecutá: el caso de 17 mata inmediatamente esta simplificación.',
+      'Mostrá que Engine combina OperatorReplacement y SemanticSimplification dentro del mismo ciclo.',
+      'Ejecutá: >= → > queda ALIVE, mientras reemplazar la decisión completa por true queda KILLED por el caso de 17.',
     ],
     claims: [
+      'Una misma infraestructura puede ejecutar familias de operadores con objetivos distintos.',
       'Una reducción viva puede indicar código redundante, no solamente un test faltante.',
     ],
   },
@@ -814,11 +818,12 @@ const slides: Slide[] = [
     title: 'Si ningún input observa la diferencia, el mutante es equivalente',
     copy: 'Este problema es distinto del Oracle Problem: no hay un caso faltante que pueda separar original y mutante. En una herramienta orientada a semantic simplification, esa supervivencia tiene valor: revela comportamiento irrelevante que podemos eliminar.',
     annotation:
-      'Si la simplificación conserva toda conducta observable, aceptar el mutante mejora el programa original.',
+      'Una equivalencia puede revelar código removible, pero no siempre aporta valor: otros operadores —o nuevas versiones de la herramienta— pueden generar mutantes equivalentes imposibles de matar y convertirlos en ruido.',
     presenter: [
       'Contrastá con >= → >: en el ejemplo ficticio, risk_score = 742 prueba que esos programas no son equivalentes.',
       'Usá i + 1 + 0 → i + 1: quitar + 0 no cambia ningún resultado observable.',
       'Explicá la filosofía: un buen operador no debería producir ruido; si una simplificación es equivalente, se acepta el cambio.',
+      'Contrastá ese caso útil con mutantes equivalentes producidos por reemplazos: ninguna suite puede matarlos y distintas versiones pueden volver a generarlos.',
     ],
     claims: [
       'Un mutante equivalente no puede ser matado por ningún test basado en comportamiento observable.',
@@ -944,7 +949,7 @@ const slides: Slide[] = [
     section: 'Reflexión',
     minutes: 3,
     visual: 'reflection',
-    title: 'Si la IA escribe más código, la escasez no será escribir',
+    title: 'El próximo desafío: construir guardrails para desarrollar con IA',
     copy: 'El lugar interesante puede estar un nivel más arriba: herramientas que verifican, restringen y explican código generado. Mutation testing, complejidad, análisis estático y contraejemplos convierten velocidad en confianza calibrada.',
     annotation:
       'Menos automatización que produce código sin verificar. Más metacódigo que nos ayuda a decidir si ese código merece confianza.',
@@ -2383,6 +2388,20 @@ function Diagram({ visual }: { visual: Visual }) {
               <span className="mx-2 text-white/45">→</span>
               <span className="font-semibold">premium?</span>
             </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-[10px] text-white/75">
+              <span className="border border-white/15 px-2 py-1.5">
+                borrar rama
+              </span>
+              <span className="border border-white/15 px-2 py-1.5">
+                omitir llamada
+              </span>
+              <span className="border border-white/15 px-2 py-1.5">
+                quitar argumento
+              </span>
+              <span className="border border-white/15 px-2 py-1.5">
+                constante → nil
+              </span>
+            </div>
           </div>
           <div className="border border-[#6b3d7a] bg-[#6b3d7a] p-5 text-[#fffaf6]">
             <p className="font-mono text-[10px] uppercase tracking-[.14em] text-white/70">
@@ -2396,6 +2415,18 @@ function Diagram({ visual }: { visual: Visual }) {
               <span className="text-white/55">age &gt;= 18</span>
               <span className="mx-2 text-white/45">→</span>
               <span className="font-semibold">age &gt; 18</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-[10px] text-white/75">
+              <span className="border border-white/15 px-2 py-1.5">
+                == → !=
+              </span>
+              <span className="border border-white/15 px-2 py-1.5">+ → −</span>
+              <span className="border border-white/15 px-2 py-1.5">
+                true → false
+              </span>
+              <span className="border border-white/15 px-2 py-1.5">
+                &lt; → &lt;=
+              </span>
             </div>
           </div>
         </div>
@@ -2991,9 +3022,6 @@ function Diagram({ visual }: { visual: Visual }) {
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[#f4a5b1]">
               Para llevar
             </p>
-            <p className="mt-5 max-w-md text-3xl font-semibold tracking-[-.04em] sm:text-4xl">
-              La charla, el código y la evidencia quedan abiertos.
-            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {[
@@ -3238,12 +3266,6 @@ export default function Home() {
           >
             <ExternalLink className="size-3" /> Fuentes y lecturas
           </button>
-          <p className="mt-5 border-t border-[#6c2330]/15 pt-4 text-xs leading-relaxed text-[#75555a]">
-            <span className="block font-mono text-[#9c1f31]">
-              {formatDuration(totalMinutes)}
-            </span>
-            de contenido + 5 min de preguntas
-          </p>
         </nav>
 
         <section className="relative overflow-hidden px-5 py-7 sm:px-8 sm:py-12">
