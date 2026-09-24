@@ -317,6 +317,31 @@ const semanticSimplificationSource = `module MiniMutant
   end
 end`;
 
+const engineSource = `module MiniMutant
+  class Engine
+    def self.run(owner:, method_name:, &tests)
+      subject = Subject.new(owner:, name: method_name)
+      source_file = SourceFile.load(subject.path)
+      subject_ast = MethodFinder.call(source_file, subject)
+
+      raise "baseline failed" unless tests.call
+
+      point = MutationPoint.find(subject_ast)
+      mutations = [SemanticSimplification.call(subject_ast, point)]
+
+      mutations.map do |mutation|
+        ruby = Deparser.call(mutation.ast)
+        status, error = Runner.call(subject:, mutation:, &tests)
+        report(ruby, status, error)
+      end.join("\n")
+    end
+
+    def self.report(ruby, status, error)
+      "#{status.upcase}: #{ruby}#{error ? " → #{error}" : ""}"
+    end
+  end
+end`;
+
 const preparation = `load "citizen.rb"
 load "mini_mutant/subject.rb"
 load "mini_mutant/source_file.rb"
@@ -411,17 +436,19 @@ load "citizen_test.rb"
 
 status, error = MiniMutant::Runner.call(subject:, mutation:) { run_tests }
 error ? "#{status.upcase} → #{error}" : status.upcase.to_s`,
-  simplification: `${preparation}
+  simplification: `load "citizen.rb"
+load "mini_mutant/subject.rb"
+load "mini_mutant/source_file.rb"
+load "mini_mutant/method_finder.rb"
+load "mini_mutant/mutation.rb"
 load "mini_mutant/deparser.rb"
 load "mini_mutant/inserter.rb"
 load "mini_mutant/runner.rb"
 load "mini_mutant/semantic_simplification.rb"
+load "mini_mutant/engine.rb"
 load "citizen_test.rb"
 
-mutation = MiniMutant::SemanticSimplification.call(original, point)
-ruby = MiniMutant::Deparser.call(mutation.ast)
-status, error = MiniMutant::Runner.call(subject:, mutation:) { run_tests }
-"#{ruby}\\n\\n#{error ? "#{status.upcase} → #{error}" : status.upcase}"`,
+MiniMutant::Engine.run(owner: Citizen, method_name: :adult?) { run_tests }`,
 };
 
 const slides: Slide[] = [
@@ -1137,6 +1164,7 @@ const architectureFiles: LabFile[] = [
     name: 'mini_mutant/semantic_simplification.rb',
     code: semanticSimplificationSource,
   },
+  { name: 'mini_mutant/engine.rb', code: engineSource },
 ];
 
 const architectureDepth: Record<Exclude<ImperativeStep, 'contract'>, number> = {
@@ -1148,7 +1176,7 @@ const architectureDepth: Record<Exclude<ImperativeStep, 'contract'>, number> = {
   patch: 7,
   insertion: 8,
   verdict: 9,
-  simplification: 10,
+  simplification: 11,
 };
 
 function labFilesFor(step: ImperativeStep, initialCode: string): LabFile[] {
@@ -1183,7 +1211,7 @@ function defaultLabFile(step: ImperativeStep) {
     patch: 'mini_mutant/deparser.rb',
     insertion: 'mini_mutant/inserter.rb',
     verdict: 'citizen_test.rb',
-    simplification: 'mini_mutant/semantic_simplification.rb',
+    simplification: 'mini_mutant/engine.rb',
   };
   return defaults[step];
 }
@@ -2756,84 +2784,15 @@ function Diagram({ visual }: { visual: Visual }) {
 
   if (visual === 'meta-pipeline')
     return (
-      <div className="overflow-hidden border border-[#6c2330]/20 bg-[#fffdfb] shadow-[0_18px_50px_rgba(91,30,42,.09)]">
-        <div className="border-b border-[#6c2330]/15 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <p className={label}>01 · Fabricar una falla plausible</p>
-            <span className="font-mono text-[9px] text-[#75555a]">
-              issues + repo
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 text-center">
-            <div className="border border-[#6c2330]/15 bg-[#fffaf6] px-2 py-3">
-              <p className="text-xs font-semibold">Issue real de CI</p>
-              <p className="mt-1 font-mono text-[9px] text-[#75555a]">
-                + código + tests
-              </p>
-            </div>
-            <ArrowRight className="size-4 text-[#9c1f31]" />
-            <div className="border border-[#6b3d7a]/30 bg-[#f7f0fa] px-2 py-3">
-              <Sparkles className="mx-auto size-4 text-[#6b3d7a]" />
-              <p className="mt-1 text-xs font-semibold">LLM propone fault</p>
-            </div>
-            <ArrowRight className="size-4 text-[#9c1f31]" />
-            <div className="border border-[#9c1f31] bg-[#fff5f4] px-2 py-3">
-              <p className="text-xs font-semibold">Mutante útil</p>
-              <p className="mt-1 font-mono text-[9px] text-[#75555a]">
-                build · pass · ≠ equivalent
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#42191f] p-4 text-white">
-          <div className="flex items-center justify-between gap-4">
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[.14em] text-[#f4a5b1]">
-              02 · Fabricar la evidencia
-            </p>
-            <span className="font-mono text-[9px] text-white/55">
-              mutante + repo
-            </span>
-          </div>
-          <div className="mt-4 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 text-center">
-            <div className="border border-white/20 bg-white/5 px-2 py-3">
-              <Sparkles className="mx-auto size-4 text-[#f4a5b1]" />
-              <p className="mt-1 text-xs font-semibold">LLM genera test</p>
-            </div>
-            <ArrowRight className="size-4 text-[#f4a5b1]" />
-            <div className="border border-white/20 bg-white/5 px-2 py-3">
-              <p className="text-xs font-semibold">Triple gate</p>
-              <p className="mt-1 font-mono text-[9px] text-white/55">
-                build · pasa original · mata fault
-              </p>
-            </div>
-            <ArrowRight className="size-4 text-[#f4a5b1]" />
-            <div className="border border-[#f4a5b1]/55 bg-[#9c1f31]/40 px-2 py-3">
-              <p className="text-xs font-semibold">Diff + test plan</p>
-              <p className="mt-1 font-mono text-[9px] text-white/55">
-                code review · CI
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 divide-x divide-[#6c2330]/15 border-t border-[#6c2330]/15">
-          {[
-            ['10.795', 'clases'],
-            ['9.095', 'build + pass'],
-            ['4.660', 'no equivalentes'],
-            ['571', 'tests'],
-          ].map(([value, caption]) => (
-            <div className="p-3 text-center" key={caption}>
-              <p className="font-mono text-sm font-bold text-[#9c1f31]">
-                {value}
-              </p>
-              <p className="mt-1 text-[9px] uppercase tracking-wide text-[#75555a]">
-                {caption}
-              </p>
-            </div>
-          ))}
-        </div>
+      <div className="overflow-hidden border border-[#6c2330]/20 bg-white p-2 shadow-[0_18px_50px_rgba(91,30,42,.09)]">
+        <Image
+          alt="Arquitectura completa de ACH para generación de tests guiada por mutaciones en Meta"
+          className="h-auto w-full object-contain"
+          height={1212}
+          src="/meta-ach-architecture.png"
+          unoptimized
+          width={1908}
+        />
       </div>
     );
 
